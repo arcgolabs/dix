@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/DaiYuANg/arcgo/dbx"
-	mapperx "github.com/DaiYuANg/arcgo/dbx/mapper"
-	"github.com/DaiYuANg/arcgo/dbx/querydsl"
+	"github.com/arcgolabs/dbx"
+	mapperx "github.com/arcgolabs/dbx/mapper"
+	"github.com/arcgolabs/dbx/querydsl"
 	"github.com/arcgolabs/dix/examples/backend/domain"
 	backendschema "github.com/arcgolabs/dix/examples/backend/schema"
 )

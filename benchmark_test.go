@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/arcgolabs/dix"
-	dixadvanced "github.com/arcgolabs/dix/advanced"
 )
 
 type benchConfig struct {
@@ -36,29 +35,6 @@ type benchService struct {
 
 type benchHandler struct {
 	service *benchService
-}
-
-type benchGreeter interface {
-	Greet() string
-}
-
-type benchEnglishGreeter struct {
-	logger *slog.Logger
-}
-
-func (g *benchEnglishGreeter) Greet() string { return "hello" }
-
-type benchTransientToken struct {
-	service *benchService
-}
-
-type benchRequestContext struct {
-	RequestID string
-}
-
-type benchScopedHandler struct {
-	service *benchService
-	req     benchRequestContext
 }
 
 func (s *benchService) Start(context.Context) error { return nil }
@@ -135,34 +111,6 @@ func newBenchmarkApp() *dix.App {
 	)
 }
 
-func newAdvancedBenchmarkApp() *dix.App {
-	coreModule, domainModule, transportModule := newBenchmarkModules()
-	advancedModule := dix.NewModule("advanced",
-		dix.WithModuleImports(transportModule),
-		dix.WithModuleProviders(
-			dixadvanced.NamedValue("locale.default", "en-US"),
-			dix.Provider1(func(logger *slog.Logger) *benchEnglishGreeter {
-				return &benchEnglishGreeter{logger: logger}
-			}),
-			dixadvanced.NamedProvider1[*benchEnglishGreeter, *slog.Logger]("greeter.en", func(logger *slog.Logger) *benchEnglishGreeter {
-				return &benchEnglishGreeter{logger: logger}
-			}),
-			dixadvanced.TransientProvider1[*benchTransientToken, *benchService](func(service *benchService) *benchTransientToken {
-				return &benchTransientToken{service: service}
-			}),
-		),
-		dix.WithModuleSetups(
-			dixadvanced.BindAlias[*benchEnglishGreeter, benchGreeter](),
-			dixadvanced.BindNamedAlias[*benchEnglishGreeter, benchGreeter]("greeter.en", "greeter.en.alias"),
-		),
-	)
-
-	return dix.New(
-		"advanced-benchmark",
-		dix.WithModules(loggerModule(benchmarkLogger()), coreModule, domainModule, transportModule, advancedModule),
-	)
-}
-
 func buildBenchmarkRuntime(b *testing.B) *dix.Runtime {
 	b.Helper()
 
@@ -174,23 +122,7 @@ func buildBenchmarkRuntime(b *testing.B) *dix.Runtime {
 	return rt
 }
 
-func buildAdvancedBenchmarkRuntime(b *testing.B) *dix.Runtime {
-	b.Helper()
-
-	rt, err := newAdvancedBenchmarkApp().Build()
-	if err != nil {
-		b.Fatal(err)
-	}
-
-	return rt
-}
-
 var (
-	benchServiceSink        *benchService
-	benchHandlerSink        *benchHandler
-	benchGreeterSink        benchGreeter
-	benchNamedValueSink     string
-	benchTransientTokenSink *benchTransientToken
-	benchScopedHandlerSink  benchScopedHandler
-	benchInspectionSink     dixadvanced.Inspection
+	benchServiceSink *benchService
+	benchHandlerSink *benchHandler
 )

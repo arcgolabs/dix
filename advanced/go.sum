@@ -1,3 +1,11 @@
+github.com/arcgolabs/collectionx v0.2.0 h1:LRkEUxiVwbXkdhctwPXGVGwTk/xrOTkPgTwt6+mWCa4=
+github.com/arcgolabs/collectionx/internal v0.2.0 h1:h2D1f4eleFHA9BUJi2QTomtwxGIYQ8zMPxkwJLly+2k=
+github.com/arcgolabs/collectionx/interval v0.2.0 h1:UzeLwKgjDWkSc15uU4sjSBzV/gppKvYjzWCn2ki6fME=
+github.com/arcgolabs/collectionx/list v0.2.0 h1:RmMVt4eX24SDFpkiwS8KcIXfgwPD+FggG6Ps+3FxfrM=
+github.com/arcgolabs/collectionx/mapping v0.2.0 h1:o0ISMjQDXeXjLHbl4PiMYQAKxQjcbMugi+L/MkWvDkY=
+github.com/arcgolabs/collectionx/prefix v0.2.0 h1:gaIC2D1ojWQi3ADfMbfRhHTGhvQxbkxUY41WvSzcwlQ=
+github.com/arcgolabs/collectionx/set v0.2.0 h1:qtxy6CwtO1v6FqgdT5CT/88XpjlH3g1WItrGpmj8v4w=
+github.com/arcgolabs/collectionx/tree v0.2.0 h1:+pAPgKek5Q7IQO360cixcPd46eC+ALlswBGzI4yJUfQ=
 github.com/cespare/xxhash/v2 v2.3.0 h1:UL815xU9SqsFlibzuggzjXhog7bL6oX9BbNZnL2UFvs=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1VwoXQT9A3Wy9MM3WgvqSxFWenqJduM=
 github.com/google/go-cmp v0.7.0 h1:wk8382ETsv4JYUZwIsn6YpYiWiBsYLSJiTsyBybVuN8=

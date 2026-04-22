@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/DaiYuANg/arcgo/eventx"
+	"github.com/arcgolabs/eventx"
 	"github.com/arcgolabs/dix/examples/backend/domain"
 	"github.com/arcgolabs/dix/examples/backend/event"
 	"github.com/arcgolabs/dix/examples/backend/repo"

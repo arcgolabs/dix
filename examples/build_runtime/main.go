@@ -5,7 +5,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/DaiYuANg/arcgo/logx"
+	"github.com/arcgolabs/logx"
 	"github.com/arcgolabs/dix"
 )
 

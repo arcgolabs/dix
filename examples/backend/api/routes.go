@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/arcgolabs/dix/examples/backend/domain"
-	"github.com/DaiYuANg/arcgo/httpx"
+	"github.com/arcgolabs/httpx"
 	"github.com/danielgtaylor/huma/v2"
 )
 

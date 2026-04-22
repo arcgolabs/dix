@@ -23,7 +23,7 @@ You register checks on `*dix.Container` (typically in `Setups(...)`, `SetupConta
 
 ```bash
 go get github.com/arcgolabs/dix@latest
-go get github.com/DaiYuANg/arcgo/logx@latest
+go get github.com/arcgolabs/logx@latest
 ```
 
 ## 2) Create `main.go`
@@ -41,7 +41,7 @@ import (
 	"net/http"
 
 	"github.com/arcgolabs/dix"
-	"github.com/DaiYuANg/arcgo/logx"
+	"github.com/arcgolabs/logx"
 )
 
 type Config struct {

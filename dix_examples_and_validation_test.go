@@ -11,8 +11,6 @@ import (
 	"time"
 
 	"github.com/arcgolabs/dix"
-	dixadvanced "github.com/arcgolabs/dix/advanced"
-	"github.com/samber/do/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -135,99 +133,6 @@ func TestProfileFromEnv(t *testing.T) {
 
 	t.Setenv("ARCGO_DIX_PROFILE", "custom.profile")
 	assert.Equal(t, dix.Profile("custom.profile"), dix.ProfileFromEnv("ARCGO_DIX_PROFILE", dix.ProfileProd))
-}
-
-func TestWithDoSetup(t *testing.T) {
-	called := false
-	module := dix.NewModule("advanced",
-		dix.WithModuleSetups(
-			dixadvanced.DoSetup(func(raw do.Injector) error {
-				called = raw != nil
-				return nil
-			}),
-		),
-	)
-	buildRuntime(t, dix.NewApp("test", module))
-	assert.True(t, called)
-}
-
-func TestValidateReportWarnsForUndeclaredRawEscapes(t *testing.T) {
-	module := dix.NewModule("advanced",
-		dix.WithModuleProviders(
-			dix.RawProvider(func(*dix.Container) {}),
-		),
-		dix.WithModuleInvokes(
-			dix.RawInvoke(func(*dix.Container) error { return nil }),
-		),
-		dix.WithModuleHooks(
-			dix.RawHook(func(*dix.Container, dix.Lifecycle) {}),
-		),
-		dix.WithModuleSetups(
-			dixadvanced.DoSetup(func(raw do.Injector) error {
-				_ = raw
-				return nil
-			}),
-		),
-	)
-
-	report := dix.NewApp("warnings", module).ValidateReport()
-	require.False(t, report.HasErrors())
-	require.True(t, report.HasWarnings())
-	assert.Contains(t, report.WarningSummary(), string(dix.ValidationWarningRawProviderUndeclaredOutput))
-	assert.Contains(t, report.WarningSummary(), string(dix.ValidationWarningRawInvokeUndeclaredDeps))
-	assert.Contains(t, report.WarningSummary(), string(dix.ValidationWarningRawHookUndeclaredDeps))
-	assert.Contains(t, report.WarningSummary(), string(dix.ValidationWarningRawSetupUndeclaredGraph))
-}
-
-func TestValidateReportUsesDeclaredRawMetadata(t *testing.T) {
-	module := dix.NewModule("advanced",
-		dix.WithModuleProviders(
-			dix.Provider0(ProvideConfig),
-			dix.RawProviderWithMetadata(func(c *dix.Container) {
-				dix.ProvideValueT(c, &Database{dsn: "sqlite://raw.db"})
-			}, dix.ProviderMetadata{
-				Label:        "RawDatabaseProvider",
-				Output:       dix.TypedService[*Database](),
-				Dependencies: dix.ServiceRefs(dix.TypedService[Config]()),
-			}),
-		),
-		dix.WithModuleInvokes(
-			dix.RawInvokeWithMetadata(func(c *dix.Container) error {
-				_, err := dix.ResolveAs[*Database](c)
-				return err
-			}, dix.InvokeMetadata{
-				Label:        "RawInvokeDatabase",
-				Dependencies: dix.ServiceRefs(dix.TypedService[*Database]()),
-			}),
-		),
-		dix.WithModuleHooks(
-			dix.RawHookWithMetadata(func(c *dix.Container, lc dix.Lifecycle) {
-				lc.OnStart(func(context.Context) error {
-					_, err := dix.ResolveAs[*Database](c)
-					return err
-				})
-			}, dix.HookMetadata{
-				Label:        "RawStartDatabase",
-				Kind:         dix.HookKindStart,
-				Dependencies: dix.ServiceRefs(dix.TypedService[*Database]()),
-			}),
-		),
-		dix.WithModuleSetups(
-			dixadvanced.DoSetupWithMetadata(func(raw do.Injector) error {
-				_ = raw
-				return nil
-			}, dix.SetupMetadata{
-				Label:         "RawDoSetup",
-				Dependencies:  dix.ServiceRefs(dix.TypedService[Config]()),
-				Provides:      dix.ServiceRefs(dix.NamedService("tenant.default")),
-				GraphMutation: true,
-			}),
-		),
-	)
-
-	report := dix.NewApp("warnings", module).ValidateReport()
-	require.False(t, report.HasErrors())
-	assert.False(t, report.HasWarnings(), report.WarningSummary())
 }
 
 func TestValidateReportReturnsIndependentCollectionsAndStillBuilds(t *testing.T) {

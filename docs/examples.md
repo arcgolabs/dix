@@ -25,23 +25,23 @@ go run ./inspect
 
 | Example | Focus | Directory |
 | --- | --- | --- |
-| `basic` | immutable app spec, `app.Start(ctx)`, health checks, `logx` integration | [examples/dix/basic](https://github.com/DaiYuANg/arcgo/tree/main/examples/dix/basic) |
-| `aggregate_params` | provider graph composition with multiple typed dependencies | [examples/dix/aggregate_params](https://github.com/DaiYuANg/arcgo/tree/main/examples/dix/aggregate_params) |
-| `collection_contributions` | distributed providers collected into slices, maps, and `collectionx` containers | [examples/dix/collection_contributions](https://github.com/DaiYuANg/arcgo/tree/main/examples/dix/collection_contributions) |
-| `build_runtime` | explicit `Build()` to `Runtime` flow | [examples/dix/build_runtime](https://github.com/DaiYuANg/arcgo/tree/main/examples/dix/build_runtime) |
-| `build_failure` | validation/build failure behavior | [examples/dix/build_failure](https://github.com/DaiYuANg/arcgo/tree/main/examples/dix/build_failure) |
-| `metrics` | `dix/metrics`, external Prometheus handler, runtime metrics | [examples/dix/metrics](https://github.com/DaiYuANg/arcgo/tree/main/examples/dix/metrics) |
+| `basic` | immutable app spec, `app.Start(ctx)`, health checks, `logx` integration | [examples/basic](https://github.com/arcgolabs/dix/tree/main/examples/basic) |
+| `aggregate_params` | provider graph composition with multiple typed dependencies | [examples/aggregate_params](https://github.com/arcgolabs/dix/tree/main/examples/aggregate_params) |
+| `collection_contributions` | distributed providers collected into slices, maps, and `collectionx` containers | [examples/collection_contributions](https://github.com/arcgolabs/dix/tree/main/examples/collection_contributions) |
+| `build_runtime` | explicit `Build()` to `Runtime` flow | [examples/build_runtime](https://github.com/arcgolabs/dix/tree/main/examples/build_runtime) |
+| `build_failure` | validation/build failure behavior | [examples/build_failure](https://github.com/arcgolabs/dix/tree/main/examples/build_failure) |
+| `metrics` | `dix/metrics`, external Prometheus handler, runtime metrics | [examples/metrics](https://github.com/arcgolabs/dix/tree/main/examples/metrics) |
 
 ## Advanced Examples
 
 | Example | Focus | Directory |
 | --- | --- | --- |
-| `advanced_do_bridge` | explicit `do` bridge setup | [examples/dix/advanced_do_bridge](https://github.com/DaiYuANg/arcgo/tree/main/examples/dix/advanced_do_bridge) |
-| `named_alias` | named services and typed alias binding | [examples/dix/named_alias](https://github.com/DaiYuANg/arcgo/tree/main/examples/dix/named_alias) |
-| `runtime_scope` | request-like runtime scope and scoped providers | [examples/dix/runtime_scope](https://github.com/DaiYuANg/arcgo/tree/main/examples/dix/runtime_scope) |
-| `transient` | transient provider semantics | [examples/dix/transient](https://github.com/DaiYuANg/arcgo/tree/main/examples/dix/transient) |
-| `override` | structured overrides | [examples/dix/override](https://github.com/DaiYuANg/arcgo/tree/main/examples/dix/override) |
-| `inspect` | runtime inspection and diagnostics | [examples/dix/inspect](https://github.com/DaiYuANg/arcgo/tree/main/examples/dix/inspect) |
+| `advanced_do_bridge` | explicit `do` bridge setup | [examples/advanced_do_bridge](https://github.com/arcgolabs/dix/tree/main/examples/advanced_do_bridge) |
+| `named_alias` | named services and typed alias binding | [examples/named_alias](https://github.com/arcgolabs/dix/tree/main/examples/named_alias) |
+| `runtime_scope` | request-like runtime scope and scoped providers | [examples/runtime_scope](https://github.com/arcgolabs/dix/tree/main/examples/runtime_scope) |
+| `transient` | transient provider semantics | [examples/transient](https://github.com/arcgolabs/dix/tree/main/examples/transient) |
+| `override` | structured overrides | [examples/override](https://github.com/arcgolabs/dix/tree/main/examples/override) |
+| `inspect` | runtime inspection and diagnostics | [examples/inspect](https://github.com/arcgolabs/dix/tree/main/examples/inspect) |
 
 ## Full-stack backend
 
@@ -49,7 +49,7 @@ End-to-end service shape: **configx** (dotenv → file → env), **logx**, **eve
 
 | Example | Focus | Directory |
 | --- | --- | --- |
-| `backend` | integrated HTTP API + DI + SQLite persistence | [examples/dix/backend](https://github.com/DaiYuANg/arcgo/tree/main/examples/dix/backend) |
+| `backend` | integrated HTTP API + DI + SQLite persistence | [examples/backend](https://github.com/arcgolabs/dix/tree/main/examples/backend) |
 
 ```bash
 cd examples/dix

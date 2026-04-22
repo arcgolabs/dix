@@ -11,7 +11,7 @@ import (
 	"github.com/arcgolabs/dix/examples/backend/http"
 	"github.com/arcgolabs/dix/examples/backend/repo"
 	"github.com/arcgolabs/dix/examples/backend/service"
-	"github.com/DaiYuANg/arcgo/logx"
+	"github.com/arcgolabs/logx"
 	"github.com/arcgolabs/dix"
 )
 

@@ -18,7 +18,7 @@ This page shows a **self-contained** `dix` program:
 
 ```bash
 go get github.com/arcgolabs/dix@latest
-go get github.com/DaiYuANg/arcgo/logx@latest
+go get github.com/arcgolabs/logx@latest
 ```
 
 ## 2) Create `main.go`
@@ -31,7 +31,7 @@ import (
 	"log/slog"
 
 	"github.com/arcgolabs/dix"
-	"github.com/DaiYuANg/arcgo/logx"
+	"github.com/arcgolabs/logx"
 )
 
 type Config struct {
@@ -102,7 +102,7 @@ func main() {
 ```bash
 go mod init example.com/dix-hello
 go get github.com/arcgolabs/dix@latest
-go get github.com/DaiYuANg/arcgo/logx@latest
+go get github.com/arcgolabs/logx@latest
 go run .
 ```
 
@@ -120,7 +120,7 @@ import (
 	"log/slog"
 
 	"github.com/arcgolabs/dix"
-	"github.com/DaiYuANg/arcgo/logx"
+	"github.com/arcgolabs/logx"
 )
 
 type LogBundle struct {

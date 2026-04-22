@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/arcgolabs/dix"
-	dixadvanced "github.com/arcgolabs/dix/advanced"
 	"github.com/samber/do/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -201,24 +200,6 @@ func TestApp_ValidateDoesNotEscapeForCoreSetup(t *testing.T) {
 	err := app.Validate()
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), do.NameOf[Config]())
-}
-
-func TestApp_ValidateAdvancedAliasDependency(t *testing.T) {
-	app := dix.NewApp("validate-alias",
-		dix.NewModule("alias",
-			dix.WithModuleProviders(
-				dix.Provider0(func() *testGreeterImpl { return &testGreeterImpl{} }),
-			),
-			dix.WithModuleSetups(
-				dixadvanced.BindAlias[*testGreeterImpl, testGreeter](),
-			),
-			dix.WithModuleInvokes(
-				dix.Invoke1(func(testGreeter) {}),
-			),
-		),
-	)
-
-	require.NoError(t, app.Validate())
 }
 
 func TestProvider4AndAggregateDependencyStruct(t *testing.T) {

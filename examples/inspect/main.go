@@ -4,7 +4,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/DaiYuANg/arcgo/logx"
+	"github.com/arcgolabs/logx"
 	"github.com/arcgolabs/dix"
 	dixadvanced "github.com/arcgolabs/dix/advanced"
 )

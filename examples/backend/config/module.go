@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/DaiYuANg/arcgo/configx"
+	"github.com/arcgolabs/configx"
 	"github.com/DaiYuANg/arcgo/pkg/randomport"
 	"github.com/arcgolabs/dix"
 )

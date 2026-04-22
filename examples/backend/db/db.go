@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/DaiYuANg/arcgo/dbx"
-	sqlitedialect "github.com/DaiYuANg/arcgo/dbx/dialect/sqlite"
+	"github.com/arcgolabs/dbx"
+	sqlitedialect "github.com/arcgolabs/dbx/dialect/sqlite"
 	// Register the pure-Go SQLite driver used by the example.
 	_ "modernc.org/sqlite"
 )

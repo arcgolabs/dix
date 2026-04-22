@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/DaiYuANg/arcgo/observabilityx"
+	"github.com/arcgolabs/observabilityx"
 	"github.com/arcgolabs/dix"
 )
 

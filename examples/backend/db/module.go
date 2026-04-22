@@ -4,9 +4,9 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/DaiYuANg/arcgo/dbx"
-	schemax "github.com/DaiYuANg/arcgo/dbx/schema"
-	"github.com/DaiYuANg/arcgo/dbx/schemamigrate"
+	"github.com/arcgolabs/dbx"
+	schemax "github.com/arcgolabs/dbx/schema"
+	"github.com/arcgolabs/dbx/schemamigrate"
 	"github.com/arcgolabs/dix"
 	"github.com/arcgolabs/dix/examples/backend/config"
 	"github.com/arcgolabs/dix/examples/backend/schema"

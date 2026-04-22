@@ -27,8 +27,8 @@ That means:
 ```bash
 go get github.com/arcgolabs/dix@latest
 go get github.com/arcgolabs/dix/metrics@latest
-go get github.com/DaiYuANg/arcgo/observabilityx/prometheus@latest
-go get github.com/DaiYuANg/arcgo/observabilityx/otel@latest
+go get github.com/arcgolabs/observabilityx/prometheus@latest
+go get github.com/arcgolabs/observabilityx/otel@latest
 ```
 
 ## Minimal Prometheus wiring
@@ -44,7 +44,7 @@ import (
 
 	"github.com/arcgolabs/dix"
 	dixmetrics "github.com/arcgolabs/dix/metrics"
-	promobs "github.com/DaiYuANg/arcgo/observabilityx/prometheus"
+	promobs "github.com/arcgolabs/observabilityx/prometheus"
 )
 
 func main() {
@@ -81,7 +81,7 @@ import (
 
 	"github.com/arcgolabs/dix"
 	dixmetrics "github.com/arcgolabs/dix/metrics"
-	otelobs "github.com/DaiYuANg/arcgo/observabilityx/otel"
+	otelobs "github.com/arcgolabs/observabilityx/otel"
 )
 
 func main() {

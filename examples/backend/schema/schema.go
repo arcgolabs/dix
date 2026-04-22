@@ -4,8 +4,8 @@ package schema
 import (
 	"time"
 
-	columnx "github.com/DaiYuANg/arcgo/dbx/column"
-	schemax "github.com/DaiYuANg/arcgo/dbx/schema"
+	columnx "github.com/arcgolabs/dbx/column"
+	schemax "github.com/arcgolabs/dbx/schema"
 )
 
 // UserRow is the dbx row model for the users table.

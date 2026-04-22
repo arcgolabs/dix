@@ -4,14 +4,17 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"sync"
 	"testing"
+	"time"
 
-	"github.com/DaiYuANg/arcgo/observabilityx"
 	"github.com/arcgolabs/dix"
 	dixmetrics "github.com/arcgolabs/dix/metrics"
+	"github.com/arcgolabs/observabilityx"
 )
 
 type testObservability struct {
+	mu           sync.Mutex
 	counterCalls []metricCall
 	histCalls    []metricCall
 }
@@ -24,6 +27,15 @@ type metricCall struct {
 
 func (t *testObservability) Logger() *slog.Logger {
 	return slog.Default()
+}
+
+func (t *testObservability) snapshot() ([]metricCall, []metricCall) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	counterCalls := append([]metricCall(nil), t.counterCalls...)
+	histCalls := append([]metricCall(nil), t.histCalls...)
+	return counterCalls, histCalls
 }
 
 func (t *testObservability) StartSpan(ctx context.Context, _ string, _ ...observabilityx.Attribute) (context.Context, observabilityx.Span) {
@@ -56,6 +68,8 @@ type testCounter struct {
 }
 
 func (t testCounter) Add(_ context.Context, value int64, attrs ...observabilityx.Attribute) {
+	t.parent.mu.Lock()
+	defer t.parent.mu.Unlock()
 	t.parent.counterCalls = append(t.parent.counterCalls, metricCall{
 		name:  t.name,
 		value: float64(value),
@@ -69,6 +83,8 @@ type testHistogram struct {
 }
 
 func (t testHistogram) Record(_ context.Context, value float64, attrs ...observabilityx.Attribute) {
+	t.parent.mu.Lock()
+	defer t.parent.mu.Unlock()
 	t.parent.histCalls = append(t.parent.histCalls, metricCall{
 		name:  t.name,
 		value: value,
@@ -82,6 +98,8 @@ type testGauge struct {
 }
 
 func (t testGauge) Set(_ context.Context, value float64, attrs ...observabilityx.Attribute) {
+	t.parent.mu.Lock()
+	defer t.parent.mu.Unlock()
 	t.parent.histCalls = append(t.parent.histCalls, metricCall{
 		name:  t.name,
 		value: value,
@@ -115,20 +133,21 @@ func TestObserverEmitsBuildAndStateMetrics(t *testing.T) {
 		From:    dix.AppStateBuilt,
 		To:      dix.AppStateStarting,
 	})
+	counterCalls, histCalls := obs.snapshot()
 
-	assertCounterCall(t, obs.counterCalls, "arc_dix_build_total", map[string]any{
+	assertCounterCall(t, counterCalls, "arc_dix_build_total", map[string]any{
 		"app":     "orders",
 		"profile": string(dix.ProfileProd),
 		"version": "1.2.3",
 		"result":  "error",
 	})
-	assertHistogramCall(t, obs.histCalls, "arc_dix_build_modules", map[string]any{
+	assertHistogramCall(t, histCalls, "arc_dix_build_modules", map[string]any{
 		"app":     "orders",
 		"profile": string(dix.ProfileProd),
 		"version": "1.2.3",
 		"result":  "error",
 	}, 2)
-	assertCounterCall(t, obs.counterCalls, "arc_dix_state_transition_total", map[string]any{
+	assertCounterCall(t, counterCalls, "arc_dix_state_transition_total", map[string]any{
 		"app":     "orders",
 		"profile": string(dix.ProfileProd),
 		"version": "1.2.3",
@@ -166,29 +185,31 @@ func TestWithObservabilityAttachesToDixApp(t *testing.T) {
 	if err := rt.Stop(context.Background()); err != nil {
 		t.Fatalf("stop failed: %v", err)
 	}
+	waitForCounterCall(t, obs, "dix_stop_total")
+	counterCalls, _ := obs.snapshot()
 
-	assertCounterCall(t, obs.counterCalls, "dix_build_total", map[string]any{
+	assertCounterCall(t, counterCalls, "dix_build_total", map[string]any{
 		"app":     "metrics-app",
 		"profile": string(dix.ProfileDefault),
 		"result":  "ok",
 	})
-	assertCounterCall(t, obs.counterCalls, "dix_start_total", map[string]any{
+	assertCounterCall(t, counterCalls, "dix_start_total", map[string]any{
 		"app":     "metrics-app",
 		"profile": string(dix.ProfileDefault),
 		"result":  "ok",
 	})
-	assertCounterCall(t, obs.counterCalls, "dix_stop_total", map[string]any{
+	assertCounterCall(t, counterCalls, "dix_stop_total", map[string]any{
 		"app":     "metrics-app",
 		"profile": string(dix.ProfileDefault),
 		"result":  "ok",
 	})
-	assertCounterCall(t, obs.counterCalls, "dix_health_check_total", map[string]any{
+	assertCounterCall(t, counterCalls, "dix_health_check_total", map[string]any{
 		"app":     "metrics-app",
 		"profile": string(dix.ProfileDefault),
 		"kind":    string(dix.HealthKindGeneral),
 		"result":  "ok",
 	})
-	healthCounter := findCounterCall(t, obs.counterCalls, "dix_health_check_total")
+	healthCounter := findCounterCall(t, counterCalls, "dix_health_check_total")
 	if _, exists := healthCounter.attrs["check"]; exists {
 		t.Fatal("expected health check name attribute to be disabled")
 	}
@@ -240,4 +261,19 @@ func assertHistogramCall(t *testing.T, calls []metricCall, name string, wantAttr
 		return
 	}
 	t.Fatalf("expected histogram call %q with value %v", name, wantValue)
+}
+
+func waitForCounterCall(t *testing.T, obs *testObservability, name string) {
+	t.Helper()
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		counterCalls, _ := obs.snapshot()
+		for _, call := range counterCalls {
+			if call.name == name {
+				return
+			}
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatalf("expected counter call %q", name)
 }
