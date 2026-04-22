@@ -6,8 +6,8 @@ import (
 	"fmt"
 
 	"github.com/DaiYuANg/arcgo/logx"
-	"github.com/arcgolabs/arcgo/dix"
-	dixadvanced "github.com/arcgolabs/arcgo/dix/advanced"
+	"github.com/arcgolabs/dix"
+	dixadvanced "github.com/arcgolabs/dix/advanced"
 	do "github.com/samber/do/v2"
 )
 

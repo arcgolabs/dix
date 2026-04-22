@@ -4,7 +4,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/DaiYuANg/arcgo/collectionx"
+	"github.com/arcgolabs/collectionx"
 )
 
 // Profile represents an application profile (environment).

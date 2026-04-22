@@ -17,7 +17,7 @@ This page shows a **self-contained** `dix` program:
 ## 1) Install
 
 ```bash
-go get github.com/arcgolabs/arcgo/dix@latest
+go get github.com/arcgolabs/dix@latest
 go get github.com/DaiYuANg/arcgo/logx@latest
 ```
 
@@ -30,7 +30,7 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/arcgolabs/arcgo/dix"
+	"github.com/arcgolabs/dix"
 	"github.com/DaiYuANg/arcgo/logx"
 )
 
@@ -101,7 +101,7 @@ func main() {
 
 ```bash
 go mod init example.com/dix-hello
-go get github.com/arcgolabs/arcgo/dix@latest
+go get github.com/arcgolabs/dix@latest
 go get github.com/DaiYuANg/arcgo/logx@latest
 go run .
 ```
@@ -119,7 +119,7 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/arcgolabs/arcgo/dix"
+	"github.com/arcgolabs/dix"
 	"github.com/DaiYuANg/arcgo/logx"
 )
 

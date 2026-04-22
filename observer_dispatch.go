@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"sync"
 
-	"github.com/DaiYuANg/arcgo/collectionx"
+	"github.com/arcgolabs/collectionx"
 )
 
 type observerDispatchCall struct {

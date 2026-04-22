@@ -1,6 +1,6 @@
 package dix
 
-import "github.com/DaiYuANg/arcgo/collectionx"
+import "github.com/arcgolabs/collectionx"
 
 // ProviderFunc describes a typed provider registration.
 type ProviderFunc struct {

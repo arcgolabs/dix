@@ -4,7 +4,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/DaiYuANg/arcgo/collectionx"
+	"github.com/arcgolabs/collectionx"
 	"github.com/DaiYuANg/arcgo/pkg/option"
 )
 

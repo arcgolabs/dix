@@ -1,9 +1,16 @@
-module github.com/DaiYuANg/arcgo/examples/dix
+module github.com/arcgolabs/dix/examples
 
 go 1.26.2
 
 require (
-	github.com/DaiYuANg/arcgo/collectionx v0.1.6
+	github.com/arcgolabs/collectionx v0.2.0
+	github.com/DaiYuANg/arcgo/configx v0.3.2
+	github.com/DaiYuANg/arcgo/dbx v0.3.2
+	github.com/DaiYuANg/arcgo/eventx v0.3.2
+	github.com/DaiYuANg/arcgo/httpx v0.2.6
+	github.com/DaiYuANg/arcgo/logx v0.1.4
+	github.com/DaiYuANg/arcgo/observabilityx v0.2.2
+	github.com/DaiYuANg/arcgo/pkg/randomport v0.0.4
 	github.com/danielgtaylor/huma/v2 v2.37.3
 	github.com/go-chi/chi/v5 v5.2.5
 	github.com/go-playground/validator/v10 v10.30.2

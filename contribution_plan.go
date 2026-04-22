@@ -3,7 +3,7 @@ package dix
 import (
 	"context"
 
-	"github.com/DaiYuANg/arcgo/collectionx"
+	"github.com/arcgolabs/collectionx"
 )
 
 type serviceNameSet struct {

@@ -9,8 +9,8 @@ import (
 	"github.com/DaiYuANg/arcgo/dbx"
 	mapperx "github.com/DaiYuANg/arcgo/dbx/mapper"
 	"github.com/DaiYuANg/arcgo/dbx/querydsl"
-	"github.com/DaiYuANg/arcgo/examples/dix/backend/domain"
-	backendschema "github.com/DaiYuANg/arcgo/examples/dix/backend/schema"
+	"github.com/arcgolabs/dix/examples/backend/domain"
+	backendschema "github.com/arcgolabs/dix/examples/backend/schema"
 )
 
 // UserRepository persists backend users.

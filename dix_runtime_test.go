@@ -15,8 +15,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/DaiYuANg/arcgo/collectionx"
-	"github.com/arcgolabs/arcgo/dix"
+	"github.com/arcgolabs/collectionx"
+	"github.com/arcgolabs/dix"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

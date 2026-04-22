@@ -5,14 +5,14 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/DaiYuANg/arcgo/examples/dix/backend/config"
-	"github.com/DaiYuANg/arcgo/examples/dix/backend/db"
-	"github.com/DaiYuANg/arcgo/examples/dix/backend/event"
-	"github.com/DaiYuANg/arcgo/examples/dix/backend/http"
-	"github.com/DaiYuANg/arcgo/examples/dix/backend/repo"
-	"github.com/DaiYuANg/arcgo/examples/dix/backend/service"
+	"github.com/arcgolabs/dix/examples/backend/config"
+	"github.com/arcgolabs/dix/examples/backend/db"
+	"github.com/arcgolabs/dix/examples/backend/event"
+	"github.com/arcgolabs/dix/examples/backend/http"
+	"github.com/arcgolabs/dix/examples/backend/repo"
+	"github.com/arcgolabs/dix/examples/backend/service"
 	"github.com/DaiYuANg/arcgo/logx"
-	"github.com/arcgolabs/arcgo/dix"
+	"github.com/arcgolabs/dix"
 )
 
 // Run starts the backend example application.

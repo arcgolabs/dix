@@ -22,7 +22,7 @@ You register checks on `*dix.Container` (typically in `Setups(...)`, `SetupConta
 ## 1) Install
 
 ```bash
-go get github.com/arcgolabs/arcgo/dix@latest
+go get github.com/arcgolabs/dix@latest
 go get github.com/DaiYuANg/arcgo/logx@latest
 ```
 
@@ -40,7 +40,7 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/arcgolabs/arcgo/dix"
+	"github.com/arcgolabs/dix"
 	"github.com/DaiYuANg/arcgo/logx"
 )
 

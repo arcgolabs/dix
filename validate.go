@@ -5,7 +5,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/DaiYuANg/arcgo/collectionx"
+	"github.com/arcgolabs/collectionx"
 )
 
 // Validate validates the immutable app spec and current module graph.

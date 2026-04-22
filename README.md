@@ -16,9 +16,9 @@ and a runtime model without forcing most users to deal with `do` directly.
 
 ## Package layout
 
-- Default path: `github.com/arcgolabs/arcgo/dix`
-- Runtime metrics subpackage: `github.com/arcgolabs/arcgo/dix/metrics`
-- Advanced container features: `github.com/arcgolabs/arcgo/dix/advanced`
+- Default path: `github.com/arcgolabs/dix`
+- Runtime metrics subpackage: `github.com/arcgolabs/dix/metrics`
+- Advanced container features: `github.com/arcgolabs/dix/advanced`
 
 ## Documentation map
 
@@ -34,7 +34,7 @@ and a runtime model without forcing most users to deal with `do` directly.
 ## Install / Import
 
 ```bash
-go get github.com/arcgolabs/arcgo/dix@latest
+go get github.com/arcgolabs/dix@latest
 ```
 
 ## Key API surface (summary)

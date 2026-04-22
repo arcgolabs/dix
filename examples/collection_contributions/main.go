@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/DaiYuANg/arcgo/collectionx"
-	"github.com/arcgolabs/arcgo/dix"
+	"github.com/arcgolabs/collectionx"
+	"github.com/arcgolabs/dix"
 )
 
 type appConfig struct {

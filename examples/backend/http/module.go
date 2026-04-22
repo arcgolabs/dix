@@ -4,14 +4,14 @@ package http
 import (
 	"log/slog"
 
-	"github.com/DaiYuANg/arcgo/examples/dix/backend/api"
-	"github.com/DaiYuANg/arcgo/examples/dix/backend/config"
-	"github.com/DaiYuANg/arcgo/examples/dix/backend/service"
+	"github.com/arcgolabs/dix/examples/backend/api"
+	"github.com/arcgolabs/dix/examples/backend/config"
+	"github.com/arcgolabs/dix/examples/backend/service"
 	"github.com/DaiYuANg/arcgo/httpx"
 	"github.com/DaiYuANg/arcgo/httpx/adapter"
 	"github.com/DaiYuANg/arcgo/httpx/adapter/std"
 	httpxdix "github.com/DaiYuANg/arcgo/httpx/dix"
-	"github.com/arcgolabs/arcgo/dix"
+	"github.com/arcgolabs/dix"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-playground/validator/v10"

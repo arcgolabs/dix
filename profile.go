@@ -4,7 +4,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/DaiYuANg/arcgo/collectionx"
+	"github.com/arcgolabs/collectionx"
 )
 
 // ProfileManager provides utilities for working with application profiles.

@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/DaiYuANg/arcgo/logx"
-	"github.com/arcgolabs/arcgo/dix"
+	"github.com/arcgolabs/dix"
 )
 
 type greeting struct {

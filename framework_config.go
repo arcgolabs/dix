@@ -4,7 +4,7 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/DaiYuANg/arcgo/collectionx"
+	"github.com/arcgolabs/collectionx"
 	"github.com/samber/do/v2"
 	"github.com/samber/oops"
 )

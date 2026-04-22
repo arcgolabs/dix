@@ -4,7 +4,7 @@
 // 环境变量: APP_SERVER_PORT=3000, APP_DB_DSN=file:app.db
 package main
 
-import "github.com/DaiYuANg/arcgo/examples/dix/backend/app"
+import "github.com/arcgolabs/dix/examples/backend/app"
 
 func main() {
 	app.Run()

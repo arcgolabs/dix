@@ -7,8 +7,8 @@ import (
 	"log/slog"
 
 	"github.com/DaiYuANg/arcgo/logx"
-	"github.com/arcgolabs/arcgo/dix"
-	dixadvanced "github.com/arcgolabs/arcgo/dix/advanced"
+	"github.com/arcgolabs/dix"
+	dixadvanced "github.com/arcgolabs/dix/advanced"
 )
 
 type greeter interface {

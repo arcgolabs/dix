@@ -7,9 +7,9 @@ import (
 	"github.com/DaiYuANg/arcgo/dbx"
 	schemax "github.com/DaiYuANg/arcgo/dbx/schema"
 	"github.com/DaiYuANg/arcgo/dbx/schemamigrate"
-	"github.com/DaiYuANg/arcgo/examples/dix/backend/config"
-	"github.com/DaiYuANg/arcgo/examples/dix/backend/schema"
-	"github.com/arcgolabs/arcgo/dix"
+	"github.com/arcgolabs/dix"
+	"github.com/arcgolabs/dix/examples/backend/config"
+	"github.com/arcgolabs/dix/examples/backend/schema"
 )
 
 // Module wires the backend example database and schema services.

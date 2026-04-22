@@ -7,7 +7,7 @@ import (
 	"log/slog"
 
 	"github.com/DaiYuANg/arcgo/eventx"
-	"github.com/arcgolabs/arcgo/dix"
+	"github.com/arcgolabs/dix"
 )
 
 // Module wires the backend example event bus and user event subscriptions.

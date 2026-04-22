@@ -6,7 +6,7 @@ import (
 
 	"github.com/DaiYuANg/arcgo/configx"
 	"github.com/DaiYuANg/arcgo/pkg/randomport"
-	"github.com/arcgolabs/arcgo/dix"
+	"github.com/arcgolabs/dix"
 )
 
 // Module loads the backend example configuration and startup logs.

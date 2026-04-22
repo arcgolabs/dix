@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/arcgolabs/arcgo/dix"
-	dixadvanced "github.com/arcgolabs/arcgo/dix/advanced"
+	"github.com/arcgolabs/dix"
+	dixadvanced "github.com/arcgolabs/dix/advanced"
 	"github.com/samber/do/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

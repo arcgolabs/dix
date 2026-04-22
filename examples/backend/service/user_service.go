@@ -6,9 +6,9 @@ import (
 	"log/slog"
 
 	"github.com/DaiYuANg/arcgo/eventx"
-	"github.com/DaiYuANg/arcgo/examples/dix/backend/domain"
-	"github.com/DaiYuANg/arcgo/examples/dix/backend/event"
-	"github.com/DaiYuANg/arcgo/examples/dix/backend/repo"
+	"github.com/arcgolabs/dix/examples/backend/domain"
+	"github.com/arcgolabs/dix/examples/backend/event"
+	"github.com/arcgolabs/dix/examples/backend/repo"
 )
 
 // UserService implements the user operations exposed by the backend example.

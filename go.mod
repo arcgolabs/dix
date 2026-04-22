@@ -3,7 +3,7 @@ module github.com/arcgolabs/dix
 go 1.26.2
 
 require (
-	github.com/DaiYuANg/arcgo/collectionx v0.1.6
+	github.com/arcgolabs/collectionx v0.2.0
 	github.com/DaiYuANg/arcgo/pkg/option v0.0.2
 	github.com/samber/do/v2 v2.0.0
 	github.com/samber/go-type-to-string v1.8.0

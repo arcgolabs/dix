@@ -1,8 +1,8 @@
 package advanced
 
 import (
-	"github.com/DaiYuANg/arcgo/collectionx"
-	"github.com/arcgolabs/arcgo/dix"
+	"github.com/arcgolabs/collectionx"
+	"github.com/arcgolabs/dix"
 )
 
 func newProvider(

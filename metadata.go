@@ -3,8 +3,8 @@ package dix
 import (
 	"log/slog"
 
-	"github.com/DaiYuANg/arcgo/collectionx"
-	collectionset "github.com/DaiYuANg/arcgo/collectionx/set"
+	"github.com/arcgolabs/collectionx"
+	collectionset "github.com/arcgolabs/collectionx/set"
 	"github.com/samber/oops"
 )
 

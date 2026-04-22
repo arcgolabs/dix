@@ -2,8 +2,8 @@
 package repo
 
 import (
-	"github.com/DaiYuANg/arcgo/examples/dix/backend/db"
-	"github.com/arcgolabs/arcgo/dix"
+	"github.com/arcgolabs/dix"
+	"github.com/arcgolabs/dix/examples/backend/db"
 )
 
 // Module wires the backend example repositories.

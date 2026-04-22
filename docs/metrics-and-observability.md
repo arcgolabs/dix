@@ -8,7 +8,7 @@ weight: 4
 ## Metrics And Observability
 
 `dix` itself does not embed an exporter, an HTTP server, or an OTel pipeline.  
-The new standalone subpackage `github.com/arcgolabs/arcgo/dix/metrics` only translates internal `dix` runtime events into `observabilityx` metrics:
+The new standalone subpackage `github.com/arcgolabs/dix/metrics` only translates internal `dix` runtime events into `observabilityx` metrics:
 
 - build
 - start
@@ -25,8 +25,8 @@ That means:
 ## Install
 
 ```bash
-go get github.com/arcgolabs/arcgo/dix@latest
-go get github.com/arcgolabs/arcgo/dix/metrics@latest
+go get github.com/arcgolabs/dix@latest
+go get github.com/arcgolabs/dix/metrics@latest
 go get github.com/DaiYuANg/arcgo/observabilityx/prometheus@latest
 go get github.com/DaiYuANg/arcgo/observabilityx/otel@latest
 ```
@@ -42,8 +42,8 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/arcgolabs/arcgo/dix"
-	dixmetrics "github.com/arcgolabs/arcgo/dix/metrics"
+	"github.com/arcgolabs/dix"
+	dixmetrics "github.com/arcgolabs/dix/metrics"
 	promobs "github.com/DaiYuANg/arcgo/observabilityx/prometheus"
 )
 
@@ -79,8 +79,8 @@ package main
 import (
 	"context"
 
-	"github.com/arcgolabs/arcgo/dix"
-	dixmetrics "github.com/arcgolabs/arcgo/dix/metrics"
+	"github.com/arcgolabs/dix"
+	dixmetrics "github.com/arcgolabs/dix/metrics"
 	otelobs "github.com/DaiYuANg/arcgo/observabilityx/otel"
 )
 

@@ -9,7 +9,7 @@ import (
 	"log/slog"
 	"testing"
 
-	"github.com/arcgolabs/arcgo/dix"
+	"github.com/arcgolabs/dix"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

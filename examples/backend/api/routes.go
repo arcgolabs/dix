@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/DaiYuANg/arcgo/examples/dix/backend/domain"
+	"github.com/arcgolabs/dix/examples/backend/domain"
 	"github.com/DaiYuANg/arcgo/httpx"
 	"github.com/danielgtaylor/huma/v2"
 )

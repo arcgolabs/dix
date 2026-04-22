@@ -10,8 +10,8 @@ import (
 	"strings"
 
 	promobs "github.com/DaiYuANg/arcgo/observabilityx/prometheus"
-	"github.com/arcgolabs/arcgo/dix"
-	dixmetrics "github.com/arcgolabs/arcgo/dix/metrics"
+	"github.com/arcgolabs/dix"
+	dixmetrics "github.com/arcgolabs/dix/metrics"
 )
 
 func main() {

@@ -1,7 +1,7 @@
 package advanced
 
 import (
-	"github.com/arcgolabs/arcgo/dix"
+	"github.com/arcgolabs/dix"
 	"github.com/samber/do/v2"
 	"github.com/samber/oops"
 )

@@ -1,9 +1,9 @@
-module github.com/arcgolabs/arcgo/dix/advanced
+module github.com/arcgolabs/dix/advanced
 
 go 1.26.2
 
 require (
-	github.com/DaiYuANg/arcgo/collectionx v0.1.6
+	github.com/arcgolabs/collectionx v0.2.0
 	github.com/samber/do/v2 v2.0.0
 	github.com/samber/oops v1.21.0
 )

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/arcgolabs/arcgo/dix"
+	"github.com/arcgolabs/dix"
 )
 
 type databaseConfig struct {

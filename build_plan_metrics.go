@@ -1,7 +1,7 @@
 package dix
 
 import (
-	"github.com/DaiYuANg/arcgo/collectionx"
+	"github.com/arcgolabs/collectionx"
 )
 
 func countModules(modules collectionx.List[*moduleSpec]) int {

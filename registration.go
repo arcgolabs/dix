@@ -1,7 +1,7 @@
 package dix
 
 import (
-	"github.com/DaiYuANg/arcgo/collectionx"
+	"github.com/arcgolabs/collectionx"
 )
 
 // ServiceRef identifies a service in the container graph.

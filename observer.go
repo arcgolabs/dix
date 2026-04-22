@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/DaiYuANg/arcgo/collectionx"
+	"github.com/arcgolabs/collectionx"
 )
 
 // Observer receives asynchronously dispatched framework lifecycle events emitted by dix.
