@@ -10,13 +10,14 @@ import (
 
 // StopReport aggregates errors produced while stopping a runtime.
 type StopReport struct {
+	SubAppError    error
 	HookError      error
 	ShutdownReport *do.ShutdownReport
 }
 
 // HasErrors reports whether the stop report contains any errors.
 func (r *StopReport) HasErrors() bool {
-	return r != nil && (r.HookError != nil || (r.ShutdownReport != nil && len(r.ShutdownReport.Errors) > 0))
+	return r != nil && (r.SubAppError != nil || r.HookError != nil || (r.ShutdownReport != nil && len(r.ShutdownReport.Errors) > 0))
 }
 
 // Errors returns stop errors as a collectionx list.
@@ -24,7 +25,10 @@ func (r *StopReport) Errors() collectionx.List[error] {
 	if r == nil {
 		return collectionx.NewList[error]()
 	}
-	errs := collectionx.NewListWithCapacity[error](2)
+	errs := collectionx.NewListWithCapacity[error](3)
+	if r.SubAppError != nil {
+		errs.Add(r.SubAppError)
+	}
 	if r.HookError != nil {
 		errs.Add(r.HookError)
 	}

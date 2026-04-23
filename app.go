@@ -136,6 +136,14 @@ func (a *App) Modules() collectionx.List[Module] {
 	return a.spec.modules.Clone()
 }
 
+// SubApps returns the configured child applications.
+func (a *App) SubApps() collectionx.List[*App] {
+	if a == nil || a.spec == nil {
+		return collectionx.NewList[*App]()
+	}
+	return a.spec.subapps.Clone()
+}
+
 // Build compiles the immutable App spec into a Runtime.
 func (a *App) Build() (*Runtime, error) {
 	return a.BuildContext(context.Background())

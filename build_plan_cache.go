@@ -63,7 +63,7 @@ func computeBuildPlan(ctx context.Context, app *App) (*buildPlan, ValidationRepo
 		return nil, report, err
 	}
 
-	report := validateTypedGraphReport(plan)
+	report := validateBuildPlanTreeReport(plan)
 	if reportErr := report.Err(); reportErr != nil {
 		return plan, report, reportErr
 	}
@@ -75,14 +75,29 @@ func (a *App) buildPlanCacheable() bool {
 	if a == nil || a.spec == nil {
 		return false
 	}
-	if a.spec.profileConfigured {
-		return true
-	}
 
-	plan, err := newProfileBootstrapPlan(a)
-	if err != nil {
+	return appProfileResolutionCacheable(a)
+}
+
+func appProfileResolutionCacheable(app *App) bool {
+	if app == nil || app.spec == nil {
 		return false
 	}
 
-	return !plan.declaresProviderOutput(TypedService[Profile]())
+	if !app.spec.profileConfigured {
+		plan, err := newProfileBootstrapPlan(app)
+		if err != nil {
+			return false
+		}
+		if plan.declaresProviderOutput(TypedService[Profile]()) {
+			return false
+		}
+	}
+
+	cacheable := true
+	app.spec.subapps.Range(func(_ int, subapp *App) bool {
+		cacheable = appProfileResolutionCacheable(subapp)
+		return cacheable
+	})
+	return cacheable
 }

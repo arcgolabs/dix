@@ -9,6 +9,28 @@ import (
 )
 
 func validateTypedGraphReport(plan *buildPlan) ValidationReport {
+	return validateTypedGraphReportWithInherited(plan, nil)
+}
+
+func validateBuildPlanTreeReport(plan *buildPlan) ValidationReport {
+	return validateBuildPlanTreeReportWithInherited(plan, nil)
+}
+
+func validateBuildPlanTreeReportWithInherited(plan *buildPlan, inherited *collectionset.Set[string]) ValidationReport {
+	report := validateTypedGraphReportWithInherited(plan, inherited)
+	if plan == nil {
+		return report
+	}
+
+	nextInherited := mergeServiceNameSets(inherited, declaredServiceNames(plan))
+	plan.subplans.Range(func(_ int, subplan *buildPlan) bool {
+		report = mergeValidationReports(report, validateBuildPlanTreeReportWithInherited(subplan, nextInherited))
+		return true
+	})
+	return report
+}
+
+func validateTypedGraphReportWithInherited(plan *buildPlan, inherited *collectionset.Set[string]) ValidationReport {
 	if plan == nil || plan.modules == nil {
 		return ValidationReport{}
 	}
@@ -17,6 +39,7 @@ func validateTypedGraphReport(plan *buildPlan) ValidationReport {
 		!plan.declaresProviderOutput(TypedService[*slog.Logger]()),
 		!plan.declaresProviderOutput(TypedService[AppMeta]()),
 		!plan.declaresProviderOutput(TypedService[Profile]()),
+		inherited,
 	)
 	collectDeclaredOutputs(plan.modules, state)
 	validateDeclaredDependencies(plan.modules, state)
@@ -28,12 +51,18 @@ func validateTypedGraphReport(plan *buildPlan) ValidationReport {
 }
 
 type validationState struct {
-	known    *collectionset.Set[string]
-	err      collectionx.List[error]
-	warnings collectionx.List[ValidationWarning]
+	known     *collectionset.Set[string]
+	inherited *collectionset.Set[string]
+	err       collectionx.List[error]
+	warnings  collectionx.List[ValidationWarning]
 }
 
-func newValidationState(includeDefaultLogger, includeDefaultAppMeta, includeDefaultProfile bool) *validationState {
+func newValidationState(
+	includeDefaultLogger bool,
+	includeDefaultAppMeta bool,
+	includeDefaultProfile bool,
+	inherited *collectionset.Set[string],
+) *validationState {
 	known := collectionset.NewSetWithCapacity[string](64)
 	if includeDefaultLogger {
 		known.Add(serviceNameOf[*slog.Logger]())
@@ -46,10 +75,65 @@ func newValidationState(includeDefaultLogger, includeDefaultAppMeta, includeDefa
 	}
 
 	return &validationState{
-		known:    known,
-		err:      collectionx.NewListWithCapacity[error](4),
-		warnings: collectionx.NewListWithCapacity[ValidationWarning](2),
+		known:     known,
+		inherited: cloneServiceNameSet(inherited),
+		err:       collectionx.NewListWithCapacity[error](4),
+		warnings:  collectionx.NewListWithCapacity[ValidationWarning](2),
 	}
+}
+
+func declaredServiceNames(plan *buildPlan) *collectionset.Set[string] {
+	if plan == nil {
+		return collectionset.NewSet[string]()
+	}
+	state := newValidationState(
+		!plan.declaresProviderOutput(TypedService[*slog.Logger]()),
+		!plan.declaresProviderOutput(TypedService[AppMeta]()),
+		!plan.declaresProviderOutput(TypedService[Profile]()),
+		nil,
+	)
+	collectDeclaredOutputs(plan.modules, state)
+	return state.known
+}
+
+func cloneServiceNameSet(items *collectionset.Set[string]) *collectionset.Set[string] {
+	if items == nil {
+		return collectionset.NewSet[string]()
+	}
+	return collectionset.NewSetWithCapacity[string](items.Len(), items.Values()...)
+}
+
+func mergeServiceNameSets(left *collectionset.Set[string], right *collectionset.Set[string]) *collectionset.Set[string] {
+	merged := cloneServiceNameSet(left)
+	if right != nil {
+		merged.Add(right.Values()...)
+	}
+	return merged
+}
+
+func mergeValidationReports(left ValidationReport, right ValidationReport) ValidationReport {
+	return ValidationReport{
+		Errors:   mergeLists(left.Errors, right.Errors),
+		Warnings: mergeLists(left.Warnings, right.Warnings),
+	}
+}
+
+func mergeLists[T any](left collectionx.List[T], right collectionx.List[T]) collectionx.List[T] {
+	size := 0
+	if left != nil {
+		size += left.Len()
+	}
+	if right != nil {
+		size += right.Len()
+	}
+	merged := collectionx.NewListWithCapacity[T](size)
+	if left != nil {
+		merged.Add(left.Values()...)
+	}
+	if right != nil {
+		merged.Add(right.Values()...)
+	}
+	return merged
 }
 
 func collectDeclaredOutputs(modules collectionx.List[*moduleSpec], state *validationState) {
@@ -232,23 +316,30 @@ func (s *validationState) addWarning(kind ValidationWarningKind, moduleName, lab
 }
 
 func (s *validationState) validateDeps(moduleName, kind, label string, deps collectionx.List[ServiceRef]) {
-	validateDependencies(s.err, s.known, moduleName, kind, label, deps)
+	validateDependencies(s.err, s, moduleName, kind, label, deps)
 }
 
 func validateDependencies(
 	err collectionx.List[error],
-	known *collectionset.Set[string],
+	state *validationState,
 	moduleName string,
 	kind string,
 	label string,
 	deps collectionx.List[ServiceRef],
 ) {
 	deps.Range(func(_ int, dep ServiceRef) bool {
-		if !known.Contains(dep.Name) {
+		if !state.canResolve(dep.Name) {
 			err.Add(oops.In("dix").
 				With("op", "validate_dependency", "module", moduleName, "label", label, "dependency", dep.Name, "kind", kind).
 				Errorf("missing dependency `%s` for %s %s in module `%s`", dep.Name, kind, label, moduleName))
 		}
 		return true
 	})
+}
+
+func (s *validationState) canResolve(name string) bool {
+	if s == nil || name == "" {
+		return false
+	}
+	return s.known.Contains(name) || (s.inherited != nil && s.inherited.Contains(name))
 }

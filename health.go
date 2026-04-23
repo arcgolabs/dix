@@ -159,6 +159,20 @@ func (r *Runtime) checkHealthByKind(ctx context.Context, kind HealthKind) Health
 		reportChecks.Set(check.name, r.runHealthCheck(ctx, check))
 		return true
 	})
+	r.subapps.Range(func(_ int, subapp *Runtime) bool {
+		if subapp == nil {
+			return true
+		}
+		subReport := subapp.checkHealthByKind(ctx, kind)
+		if subReport.Checks == nil {
+			return true
+		}
+		subReport.Checks.Range(func(name string, err error) bool {
+			reportChecks.Set(fmt.Sprintf("%s/%s", subapp.Name(), name), err)
+			return true
+		})
+		return true
+	})
 	report.Checks = reportChecks
 	return report
 }

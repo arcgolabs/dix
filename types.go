@@ -77,6 +77,7 @@ type Runtime struct {
 	logger      *slog.Logger
 	eventLogger EventLogger
 	state       AppState
+	subapps     collectionx.List[*Runtime]
 }
 
 // Module is an immutable module specification.
@@ -98,6 +99,7 @@ type appSpec struct {
 	observers                collectionx.List[Observer]
 	observerDispatchers      collectionx.List[*observerDispatcher]
 	observersConfigured      bool
+	subapps                  collectionx.List[*App]
 	runStopTimeout           time.Duration
 	versionConfigured        bool
 	descriptionConfigured    bool

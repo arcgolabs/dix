@@ -22,6 +22,7 @@ func New(name string, opts ...AppOption) *App {
 		logger:              defaultLogger(),
 		observers:           collectionx.NewList[Observer](),
 		observerDispatchers: collectionx.NewList[*observerDispatcher](),
+		subapps:             collectionx.NewList[*App](),
 		runStopTimeout:      DefaultRunStopTimeout,
 		debug: debugSettings{
 			namedServiceDependencies: collectionx.NewOrderedSet[string](),
@@ -36,6 +37,11 @@ func New(name string, opts ...AppOption) *App {
 // NewApp keeps backward compatibility with the v0.3 style constructor surface.
 func NewApp(name string, modules ...Module) *App {
 	return New(name, WithModules(modules...))
+}
+
+// NewSubApp creates an application spec intended to be mounted below a parent app.
+func NewSubApp(name string, opts ...AppOption) *App {
+	return New(name, opts...)
 }
 
 // WithProfile selects the runtime profile for the application.
@@ -257,4 +263,21 @@ func WithModules(modules ...Module) AppOption {
 	return func(spec *appSpec) {
 		spec.modules.Add(modules...)
 	}
+}
+
+// WithSubApps appends child applications. Child applications are built in child DI scopes.
+func WithSubApps(apps ...*App) AppOption {
+	return func(spec *appSpec) {
+		spec.subapps.Add(apps...)
+	}
+}
+
+// SubApps appends child applications. Child applications are built in child DI scopes.
+func SubApps(apps ...*App) AppOption {
+	return WithSubApps(apps...)
+}
+
+// WithSubApp appends a single child application.
+func WithSubApp(app *App) AppOption {
+	return WithSubApps(app)
 }

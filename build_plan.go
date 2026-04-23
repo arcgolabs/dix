@@ -8,23 +8,29 @@ import (
 	"time"
 
 	"github.com/arcgolabs/collectionx"
+	collectionset "github.com/arcgolabs/collectionx/set"
 	"github.com/samber/oops"
 )
 
 type buildPlan struct {
-	spec    *appSpec
-	modules collectionx.List[*moduleSpec]
-	profile Profile
+	spec     *appSpec
+	modules  collectionx.List[*moduleSpec]
+	profile  Profile
+	subplans collectionx.List[*buildPlan]
 }
 
 func newUnvalidatedBuildPlan(ctx context.Context, app *App) (*buildPlan, error) {
+	return newUnvalidatedBuildPlanWithParentProfile(ctx, app, "", false)
+}
+
+func newUnvalidatedBuildPlanWithParentProfile(ctx context.Context, app *App, parentProfile Profile, hasParent bool) (*buildPlan, error) {
 	if app == nil || app.spec == nil {
 		return nil, oops.In("dix").
 			With("op", "new_unvalidated_build_plan").
 			New("app is nil")
 	}
 
-	profile, err := resolveBuildProfile(ctx, app)
+	profile, err := resolveBuildProfileWithFallback(ctx, app, parentProfile, hasParent)
 	if err != nil {
 		logMessageEvent(ctx, app.spec.resolvedEventLogger(), EventLevelError, "profile resolution failed", "app", app.Name(), "error", err)
 		return nil, oops.In("dix").
@@ -40,16 +46,68 @@ func newUnvalidatedBuildPlan(ctx context.Context, app *App) (*buildPlan, error) 
 			Wrapf(err, "module flatten failed")
 	}
 
+	subplans, err := buildSubPlans(ctx, app.spec.subapps, profile)
+	if err != nil {
+		return nil, err
+	}
+
 	plan := &buildPlan{
-		spec:    app.spec,
-		modules: modules,
-		profile: profile,
+		spec:     app.spec,
+		modules:  modules,
+		profile:  profile,
+		subplans: subplans,
 	}
 
 	return plan, nil
 }
 
+func buildSubPlans(ctx context.Context, apps collectionx.List[*App], parentProfile Profile) (collectionx.List[*buildPlan], error) {
+	subplans := collectionx.NewList[*buildPlan]()
+	if apps == nil || apps.Len() == 0 {
+		return subplans, nil
+	}
+
+	names := collectionset.NewSetWithCapacity[string](apps.Len())
+	var buildErr error
+	apps.Range(func(_ int, app *App) bool {
+		if app == nil || app.spec == nil {
+			buildErr = oops.In("dix").With("op", "build_subplans").New("subapp is nil")
+			return false
+		}
+		name := app.Name()
+		if name == "" {
+			buildErr = oops.In("dix").With("op", "build_subplans").New("subapp name is required")
+			return false
+		}
+		if names.Contains(name) {
+			buildErr = oops.In("dix").
+				With("op", "build_subplans", "subapp", name).
+				Errorf("duplicate subapp name detected: %s", name)
+			return false
+		}
+		names.Add(name)
+
+		subplan, err := newUnvalidatedBuildPlanWithParentProfile(ctx, app, parentProfile, true)
+		if err != nil {
+			buildErr = oops.In("dix").
+				With("op", "build_subplan", "subapp", name).
+				Wrapf(err, "subapp build plan failed")
+			return false
+		}
+		subplans.Add(subplan)
+		return true
+	})
+	if buildErr != nil {
+		return nil, buildErr
+	}
+	return subplans, nil
+}
+
 func resolveBuildProfile(ctx context.Context, app *App) (Profile, error) {
+	return resolveBuildProfileWithFallback(ctx, app, "", false)
+}
+
+func resolveBuildProfileWithFallback(ctx context.Context, app *App, fallback Profile, hasFallback bool) (Profile, error) {
 	if err := validateProfileResolutionApp(app); err != nil {
 		return "", err
 	}
@@ -57,12 +115,17 @@ func resolveBuildProfile(ctx context.Context, app *App) (Profile, error) {
 		return app.spec.profile, nil
 	}
 
-	plan, err := newProfileBootstrapPlan(app)
+	defaultProfile := app.spec.profile
+	if hasFallback {
+		defaultProfile = fallback
+	}
+
+	plan, err := newProfileBootstrapPlanWithProfile(app, defaultProfile)
 	if err != nil {
 		return "", err
 	}
 	if !plan.declaresProviderOutput(TypedService[Profile]()) {
-		return app.spec.profile, nil
+		return defaultProfile, nil
 	}
 	if reportErr := validateTypedGraphReport(plan).Err(); reportErr != nil {
 		return "", reportErr
@@ -81,14 +144,19 @@ func validateProfileResolutionApp(app *App) error {
 }
 
 func newProfileBootstrapPlan(app *App) (*buildPlan, error) {
+	return newProfileBootstrapPlanWithProfile(app, app.spec.profile)
+}
+
+func newProfileBootstrapPlanWithProfile(app *App, profile Profile) (*buildPlan, error) {
 	modules, err := flattenProfileBootstrapModuleList(app.spec.modules)
 	if err != nil {
 		return nil, err
 	}
 	return &buildPlan{
-		spec:    app.spec,
-		modules: modules,
-		profile: app.spec.profile,
+		spec:     app.spec,
+		modules:  modules,
+		profile:  profile,
+		subplans: collectionx.NewList[*buildPlan](),
 	}, nil
 }
 
@@ -116,6 +184,10 @@ func resolveDeclaredBuildProfile(ctx context.Context, app *App, plan *buildPlan)
 }
 
 func (p *buildPlan) Build(ctx context.Context) (_ *Runtime, err error) {
+	return p.build(ctx, nil)
+}
+
+func (p *buildPlan) build(ctx context.Context, parent *Runtime) (_ *Runtime, err error) {
 	startedAt := time.Now()
 	var rt *Runtime
 	defer func() {
@@ -129,7 +201,14 @@ func (p *buildPlan) Build(ctx context.Context) (_ *Runtime, err error) {
 		return nil, err
 	}
 
-	rt = newRuntime(p.spec, p)
+	if parent == nil {
+		rt = newRuntime(p.spec, p)
+	} else {
+		rt, err = newChildRuntime(p.spec, p, parent)
+		if err != nil {
+			return nil, err
+		}
+	}
 	p.registerRuntimeCoreServices(rt)
 
 	providersRegistered, err := p.prepareFrameworkConfig(ctx, rt)
@@ -159,9 +238,32 @@ func (p *buildPlan) Build(ctx context.Context) (_ *Runtime, err error) {
 		return nil, err
 	}
 
+	if err := p.buildSubApps(ctx, rt); err != nil {
+		err = cleanupBuildFailure(ctx, rt, err)
+		return nil, err
+	}
+
 	rt.transitionState(ctx, AppStateBuilt, "build completed")
 	rt.logDebugInformation(ctx)
 	return rt, nil
+}
+
+func (p *buildPlan) buildSubApps(ctx context.Context, rt *Runtime) error {
+	if p == nil || p.subplans == nil || p.subplans.Len() == 0 {
+		return nil
+	}
+
+	var buildErr error
+	p.subplans.Range(func(_ int, subplan *buildPlan) bool {
+		subrt, err := subplan.build(ctx, rt)
+		if err != nil {
+			buildErr = err
+			return false
+		}
+		rt.subapps.Add(subrt)
+		return true
+	})
+	return buildErr
 }
 
 func (p *buildPlan) emitBuildResult(ctx context.Context, rt *Runtime, duration time.Duration, err error) {

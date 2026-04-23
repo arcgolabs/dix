@@ -16,7 +16,7 @@ func ResolveAs[T any](c *Container) (T, error) {
 			With("op", "resolve", "service", serviceNameOf[T]()).
 			New("container is nil")
 	}
-	return resolveInjectorAs[T](c.injector)
+	return resolveContainerAs[T](c)
 }
 
 // ResolveOptionalAs resolves an optional typed value from the container.

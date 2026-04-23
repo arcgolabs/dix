@@ -7,20 +7,46 @@ import (
 	typetostring "github.com/samber/go-type-to-string"
 )
 
-var serviceNameCache sync.Map
+type serviceNamer struct {
+	cache sync.Map
+}
+
+func newServiceNamer() *serviceNamer {
+	return &serviceNamer{}
+}
 
 func serviceNameOf[T any]() string {
-	typ := reflect.TypeFor[T]()
-	if name, ok := serviceNameCache.Load(typ); ok {
+	return serviceTypeName(reflect.TypeFor[T]())
+}
+
+func serviceNameOfWith[T any](n *serviceNamer) string {
+	if n == nil {
+		return serviceNameOf[T]()
+	}
+	return n.Name(reflect.TypeFor[T]())
+}
+
+func (n *serviceNamer) Name(typ reflect.Type) string {
+	if typ == nil {
+		return ""
+	}
+	if name, ok := n.cache.Load(typ); ok {
 		if value, typeOK := name.(string); typeOK {
 			return value
 		}
 	}
 
 	name := typetostring.GetReflectType(typ)
-	actual, _ := serviceNameCache.LoadOrStore(typ, name)
+	actual, _ := n.cache.LoadOrStore(typ, name)
 	if value, ok := actual.(string); ok {
 		return value
 	}
 	return name
+}
+
+func serviceTypeName(typ reflect.Type) string {
+	if typ == nil {
+		return ""
+	}
+	return typetostring.GetReflectType(typ)
 }

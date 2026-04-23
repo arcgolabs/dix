@@ -14,6 +14,7 @@ import (
 // Raw() exists as an explicit escape hatch for advanced integrations.
 type Container struct {
 	injector     do.Injector
+	serviceNames *serviceNamer
 	healthChecks collectionx.List[healthCheckEntry]
 	logger       *slog.Logger
 	eventLogger  EventLogger
@@ -23,18 +24,42 @@ func newContainer(logger *slog.Logger) *Container {
 	if logger == nil {
 		logger = defaultLogger()
 	}
+	return newContainerWithInjector(logger, do.NewWithOpts(&do.InjectorOpts{
+		HookBeforeRegistration: nil,
+		HookAfterRegistration:  nil,
+		HookBeforeInvocation:   nil,
+		HookAfterInvocation:    nil,
+		HookBeforeShutdown:     nil,
+		HookAfterShutdown:      nil,
+		Logf: func(format string, args ...any) {
+			logger.Debug(fmt.Sprintf(format, args...))
+		},
+	}), newServiceNamer())
+}
+
+func newChildContainer(parent *Container, name string, logger *slog.Logger) (*Container, error) {
+	if parent == nil || parent.injector == nil {
+		return nil, fmt.Errorf("parent container is nil")
+	}
+	if name == "" {
+		return nil, fmt.Errorf("child container name is required")
+	}
+	if logger == nil {
+		logger = parent.logger
+	}
+	return newContainerWithInjector(logger, parent.injector.Scope(name), parent.serviceNames), nil
+}
+
+func newContainerWithInjector(logger *slog.Logger, injector do.Injector, serviceNames *serviceNamer) *Container {
+	if logger == nil {
+		logger = defaultLogger()
+	}
+	if serviceNames == nil {
+		serviceNames = newServiceNamer()
+	}
 	return &Container{
-		injector: do.NewWithOpts(&do.InjectorOpts{
-			HookBeforeRegistration: nil,
-			HookAfterRegistration:  nil,
-			HookBeforeInvocation:   nil,
-			HookAfterInvocation:    nil,
-			HookBeforeShutdown:     nil,
-			HookAfterShutdown:      nil,
-			Logf: func(format string, args ...any) {
-				logger.Debug(fmt.Sprintf(format, args...))
-			},
-		}),
+		injector:     injector,
+		serviceNames: serviceNames,
 		healthChecks: collectionx.NewList[healthCheckEntry](),
 		logger:       logger,
 	}
@@ -71,6 +96,10 @@ func resolveInjectorAs[T any](injector do.Injector) (T, error) {
 	return do.InvokeNamed[T](injector, serviceNameOf[T]())
 }
 
+func resolveContainerAs[T any](c *Container) (T, error) {
+	return do.InvokeNamed[T](c.injector, serviceNameOfWith[T](c.serviceNames))
+}
+
 // ProvideT registers a typed singleton provider with no dependencies.
 func ProvideT[T any](c *Container, fn func() T) {
 	ProvideTErr(c, func() (T, error) { return fn(), nil })
@@ -78,7 +107,7 @@ func ProvideT[T any](c *Container, fn func() T) {
 
 // ProvideTErr registers a typed singleton provider with no dependencies.
 func ProvideTErr[T any](c *Container, fn func() (T, error)) {
-	do.ProvideNamed(c.injector, serviceNameOf[T](), func(_ do.Injector) (T, error) { return fn() })
+	do.ProvideNamed(c.injector, serviceNameOfWith[T](c.serviceNames), func(_ do.Injector) (T, error) { return fn() })
 }
 
 // Provide1T registers a typed singleton provider with one dependency.
@@ -88,7 +117,7 @@ func Provide1T[T, D1 any](c *Container, fn func(D1) T) {
 
 // Provide1TErr registers a typed singleton provider with one dependency.
 func Provide1TErr[T, D1 any](c *Container, fn func(D1) (T, error)) {
-	do.ProvideNamed(c.injector, serviceNameOf[T](), func(i do.Injector) (T, error) {
+	do.ProvideNamed(c.injector, serviceNameOfWith[T](c.serviceNames), func(i do.Injector) (T, error) {
 		d1, err := resolveDependency1[D1](i)
 		if err != nil {
 			var zero T
@@ -105,7 +134,7 @@ func Provide2T[T, D1, D2 any](c *Container, fn func(D1, D2) T) {
 
 // Provide2TErr registers a typed singleton provider with two dependencies.
 func Provide2TErr[T, D1, D2 any](c *Container, fn func(D1, D2) (T, error)) {
-	do.ProvideNamed(c.injector, serviceNameOf[T](), func(i do.Injector) (T, error) {
+	do.ProvideNamed(c.injector, serviceNameOfWith[T](c.serviceNames), func(i do.Injector) (T, error) {
 		d1, d2, err := resolveDependencies2[D1, D2](i)
 		if err != nil {
 			var zero T
@@ -122,7 +151,7 @@ func Provide3T[T, D1, D2, D3 any](c *Container, fn func(D1, D2, D3) T) {
 
 // Provide3TErr registers a typed singleton provider with three dependencies.
 func Provide3TErr[T, D1, D2, D3 any](c *Container, fn func(D1, D2, D3) (T, error)) {
-	do.ProvideNamed(c.injector, serviceNameOf[T](), func(i do.Injector) (T, error) {
+	do.ProvideNamed(c.injector, serviceNameOfWith[T](c.serviceNames), func(i do.Injector) (T, error) {
 		d1, d2, d3, err := resolveDependencies3[D1, D2, D3](i)
 		if err != nil {
 			var zero T
@@ -139,7 +168,7 @@ func Provide4T[T, D1, D2, D3, D4 any](c *Container, fn func(D1, D2, D3, D4) T) {
 
 // Provide4TErr registers a typed singleton provider with four dependencies.
 func Provide4TErr[T, D1, D2, D3, D4 any](c *Container, fn func(D1, D2, D3, D4) (T, error)) {
-	do.ProvideNamed(c.injector, serviceNameOf[T](), func(i do.Injector) (T, error) {
+	do.ProvideNamed(c.injector, serviceNameOfWith[T](c.serviceNames), func(i do.Injector) (T, error) {
 		d1, d2, d3, d4, err := resolveDependencies4[D1, D2, D3, D4](i)
 		if err != nil {
 			var zero T
@@ -158,7 +187,7 @@ func Provide5T[T, D1, D2, D3, D4, D5 any](c *Container, fn func(D1, D2, D3, D4, 
 
 // Provide5TErr registers a typed singleton provider with five dependencies.
 func Provide5TErr[T, D1, D2, D3, D4, D5 any](c *Container, fn func(D1, D2, D3, D4, D5) (T, error)) {
-	do.ProvideNamed(c.injector, serviceNameOf[T](), func(i do.Injector) (T, error) {
+	do.ProvideNamed(c.injector, serviceNameOfWith[T](c.serviceNames), func(i do.Injector) (T, error) {
 		d1, d2, d3, d4, d5, err := resolveDependencies5[D1, D2, D3, D4, D5](i)
 		if err != nil {
 			var zero T
@@ -177,7 +206,7 @@ func Provide6T[T, D1, D2, D3, D4, D5, D6 any](c *Container, fn func(D1, D2, D3, 
 
 // Provide6TErr registers a typed singleton provider with six dependencies.
 func Provide6TErr[T, D1, D2, D3, D4, D5, D6 any](c *Container, fn func(D1, D2, D3, D4, D5, D6) (T, error)) {
-	do.ProvideNamed(c.injector, serviceNameOf[T](), func(i do.Injector) (T, error) {
+	do.ProvideNamed(c.injector, serviceNameOfWith[T](c.serviceNames), func(i do.Injector) (T, error) {
 		d1, d2, d3, d4, d5, d6, err := resolveDependencies6[D1, D2, D3, D4, D5, D6](i)
 		if err != nil {
 			var zero T
@@ -189,5 +218,5 @@ func Provide6TErr[T, D1, D2, D3, D4, D5, D6 any](c *Container, fn func(D1, D2, D
 
 // ProvideValueT registers a typed singleton value.
 func ProvideValueT[T any](c *Container, value T) {
-	do.ProvideNamedValue(c.injector, serviceNameOf[T](), value)
+	do.ProvideNamedValue(c.injector, serviceNameOfWith[T](c.serviceNames), value)
 }
