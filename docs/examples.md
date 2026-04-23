@@ -43,27 +43,6 @@ go run ./inspect
 | `override` | structured overrides | [examples/override](https://github.com/arcgolabs/dix/tree/main/examples/override) |
 | `inspect` | runtime inspection and diagnostics | [examples/inspect](https://github.com/arcgolabs/dix/tree/main/examples/inspect) |
 
-## Full-stack backend
-
-End-to-end service shape: **configx** (dotenv → file → env), **logx**, **eventx**, **httpx** (chi + Huma), **dix**, **dbx** (SQLite). Layout: `config`, `domain`, `repo`, `service`, `api`, `event`, `db`.
-
-| Example | Focus | Directory |
-| --- | --- | --- |
-| `backend` | integrated HTTP API + DI + SQLite persistence | [examples/backend](https://github.com/arcgolabs/dix/tree/main/examples/backend) |
-
-```bash
-cd examples/dix
-go run ./backend
-# Optional: APP_SERVER_PORT=3000 APP_DB_DSN=file:app.db
-# Open http://localhost:8080/docs
-```
-
-From the repository root:
-
-```bash
-go run ./examples/dix/backend
-```
-
 ## Example: Collection Contributions
 
 ```go

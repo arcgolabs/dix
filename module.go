@@ -2,7 +2,7 @@ package dix
 
 import (
 	"github.com/arcgolabs/collectionx"
-	"github.com/DaiYuANg/arcgo/pkg/option"
+	"github.com/arcgolabs/pkg/option"
 )
 
 // ModuleOption configures a Module during construction.

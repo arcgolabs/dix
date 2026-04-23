@@ -3,9 +3,9 @@ module github.com/arcgolabs/dix
 go 1.26.2
 
 require (
-	github.com/DaiYuANg/arcgo/pkg/option v0.0.2
 	github.com/arcgolabs/collectionx v0.2.0
 	github.com/arcgolabs/collectionx/set v0.2.0
+	github.com/arcgolabs/pkg/option v0.0.3
 	github.com/samber/do/v2 v2.0.0
 	github.com/samber/go-type-to-string v1.8.0
 	github.com/samber/mo v1.16.0

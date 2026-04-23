@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/arcgolabs/collectionx"
-	"github.com/DaiYuANg/arcgo/pkg/option"
+	"github.com/arcgolabs/pkg/option"
 )
 
 // NewDefault creates an application with the default framework name.
