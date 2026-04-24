@@ -127,8 +127,8 @@ func TestSubAppHealthIsAggregatedByParent(t *testing.T) {
 	report := rt.CheckHealth(context.Background())
 	assert.False(t, report.Healthy())
 	require.NotNil(t, report.Checks)
-	_, hasParent := report.Checks.Get("parent")
-	_, hasChild := report.Checks.Get("api/child")
+	hasParent := report.Checks.AnyEntryMatch(func(name string, _ error) bool { return name == "parent" })
+	hasChild := report.Checks.AnyEntryMatch(func(name string, _ error) bool { return name == "api/child" })
 	assert.True(t, hasParent)
 	assert.True(t, hasChild)
 }
@@ -150,4 +150,45 @@ func TestSubAppInheritsParentProfile(t *testing.T) {
 	value, err := dix.ResolveAs[subappPrivateValue](subrt.Container())
 	require.NoError(t, err)
 	assert.Equal(t, "prod-child", value.Name)
+}
+
+func TestSubAppProfileProviderCanResolveParentServices(t *testing.T) {
+	parentModule := dix.NewModule("parent",
+		dix.Providers(
+			dix.Value(subappParentValue{Name: "parent"}),
+		),
+	)
+	childProfileModule := dix.NewModule("child-profile",
+		dix.Providers(
+			dix.Provider1(func(parent subappParentValue) dix.Profile {
+				if parent.Name == "parent" {
+					return dix.ProfileProd
+				}
+				return dix.ProfileDev
+			}),
+		),
+	)
+	childProdModule := dix.NewModule("child-prod",
+		dix.UseProfiles(dix.ProfileProd),
+		dix.Providers(dix.Value(subappPrivateValue{Name: "profile-from-parent"})),
+	)
+
+	app := dix.New("parent",
+		dix.Modules(parentModule),
+		dix.SubApps(
+			dix.NewSubApp("api",
+				dix.Modules(childProfileModule, childProdModule),
+			),
+		),
+	)
+
+	require.NoError(t, app.Validate())
+	rt := buildRuntime(t, app)
+	subrt, ok := rt.SubApp("api")
+	require.True(t, ok)
+	assert.Equal(t, dix.ProfileProd, subrt.Profile())
+
+	value, err := dix.ResolveAs[subappPrivateValue](subrt.Container())
+	require.NoError(t, err)
+	assert.Equal(t, "profile-from-parent", value.Name)
 }

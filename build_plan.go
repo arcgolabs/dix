@@ -1,10 +1,7 @@
-//revive:disable:file-length-limit Build planning is kept together because the steps share one orchestration flow.
-
 package dix
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"github.com/arcgolabs/collectionx"
@@ -13,24 +10,26 @@ import (
 )
 
 type buildPlan struct {
-	spec     *appSpec
-	modules  collectionx.List[*moduleSpec]
-	profile  Profile
-	subplans collectionx.List[*buildPlan]
+	spec              *appSpec
+	modules           collectionx.List[*moduleSpec]
+	profile           Profile
+	parent            *buildPlan
+	inheritedServices *collectionset.Set[string]
+	subplans          collectionx.List[*buildPlan]
 }
 
 func newUnvalidatedBuildPlan(ctx context.Context, app *App) (*buildPlan, error) {
-	return newUnvalidatedBuildPlanWithParentProfile(ctx, app, "", false)
+	return newUnvalidatedBuildPlanWithParent(ctx, app, nil)
 }
 
-func newUnvalidatedBuildPlanWithParentProfile(ctx context.Context, app *App, parentProfile Profile, hasParent bool) (*buildPlan, error) {
+func newUnvalidatedBuildPlanWithParent(ctx context.Context, app *App, parent *buildPlan) (*buildPlan, error) {
 	if app == nil || app.spec == nil {
 		return nil, oops.In("dix").
 			With("op", "new_unvalidated_build_plan").
 			New("app is nil")
 	}
 
-	profile, err := resolveBuildProfileWithFallback(ctx, app, parentProfile, hasParent)
+	profile, err := resolveBuildProfileWithParent(ctx, app, parent)
 	if err != nil {
 		logMessageEvent(ctx, app.spec.resolvedEventLogger(), EventLevelError, "profile resolution failed", "app", app.Name(), "error", err)
 		return nil, oops.In("dix").
@@ -46,92 +45,22 @@ func newUnvalidatedBuildPlanWithParentProfile(ctx context.Context, app *App, par
 			Wrapf(err, "module flatten failed")
 	}
 
-	subplans, err := buildSubPlans(ctx, app.spec.subapps, profile)
+	plan := &buildPlan{
+		spec:              app.spec,
+		modules:           modules,
+		profile:           profile,
+		parent:            parent,
+		inheritedServices: inheritedServicesForParent(parent),
+		subplans:          collectionx.NewList[*buildPlan](),
+	}
+
+	subplans, err := buildSubPlans(ctx, app.spec.subapps, plan)
 	if err != nil {
 		return nil, err
 	}
-
-	plan := &buildPlan{
-		spec:     app.spec,
-		modules:  modules,
-		profile:  profile,
-		subplans: subplans,
-	}
+	plan.subplans = subplans
 
 	return plan, nil
-}
-
-func buildSubPlans(ctx context.Context, apps collectionx.List[*App], parentProfile Profile) (collectionx.List[*buildPlan], error) {
-	subplans := collectionx.NewList[*buildPlan]()
-	if apps == nil || apps.Len() == 0 {
-		return subplans, nil
-	}
-
-	names := collectionset.NewSetWithCapacity[string](apps.Len())
-	var buildErr error
-	apps.Range(func(_ int, app *App) bool {
-		if app == nil || app.spec == nil {
-			buildErr = oops.In("dix").With("op", "build_subplans").New("subapp is nil")
-			return false
-		}
-		name := app.Name()
-		if name == "" {
-			buildErr = oops.In("dix").With("op", "build_subplans").New("subapp name is required")
-			return false
-		}
-		if names.Contains(name) {
-			buildErr = oops.In("dix").
-				With("op", "build_subplans", "subapp", name).
-				Errorf("duplicate subapp name detected: %s", name)
-			return false
-		}
-		names.Add(name)
-
-		subplan, err := newUnvalidatedBuildPlanWithParentProfile(ctx, app, parentProfile, true)
-		if err != nil {
-			buildErr = oops.In("dix").
-				With("op", "build_subplan", "subapp", name).
-				Wrapf(err, "subapp build plan failed")
-			return false
-		}
-		subplans.Add(subplan)
-		return true
-	})
-	if buildErr != nil {
-		return nil, buildErr
-	}
-	return subplans, nil
-}
-
-func resolveBuildProfile(ctx context.Context, app *App) (Profile, error) {
-	return resolveBuildProfileWithFallback(ctx, app, "", false)
-}
-
-func resolveBuildProfileWithFallback(ctx context.Context, app *App, fallback Profile, hasFallback bool) (Profile, error) {
-	if err := validateProfileResolutionApp(app); err != nil {
-		return "", err
-	}
-	if app.spec.profileConfigured {
-		return app.spec.profile, nil
-	}
-
-	defaultProfile := app.spec.profile
-	if hasFallback {
-		defaultProfile = fallback
-	}
-
-	plan, err := newProfileBootstrapPlanWithProfile(app, defaultProfile)
-	if err != nil {
-		return "", err
-	}
-	if !plan.declaresProviderOutput(TypedService[Profile]()) {
-		return defaultProfile, nil
-	}
-	if reportErr := validateTypedGraphReport(plan).Err(); reportErr != nil {
-		return "", reportErr
-	}
-
-	return resolveDeclaredBuildProfile(ctx, app, plan)
 }
 
 func validateProfileResolutionApp(app *App) error {
@@ -153,34 +82,12 @@ func newProfileBootstrapPlanWithProfile(app *App, profile Profile) (*buildPlan, 
 		return nil, err
 	}
 	return &buildPlan{
-		spec:     app.spec,
-		modules:  modules,
-		profile:  profile,
-		subplans: collectionx.NewList[*buildPlan](),
+		spec:              app.spec,
+		modules:           modules,
+		profile:           profile,
+		inheritedServices: collectionset.NewSet[string](),
+		subplans:          collectionx.NewList[*buildPlan](),
 	}, nil
-}
-
-func resolveDeclaredBuildProfile(ctx context.Context, app *App, plan *buildPlan) (Profile, error) {
-	rt := newRuntime(app.spec, plan)
-	plan.registerRuntimeCoreServices(rt)
-	plan.registerProviders(ctx, rt, false)
-	newContributionPlan(plan.modules).register(ctx, rt, false)
-
-	profile, resolveErr := ResolveAs[Profile](rt.container)
-	if resolveErr != nil {
-		resolveErr = oops.In("dix").
-			With("op", "resolve_declared_profile", "app", app.Name(), "service", serviceNameOf[Profile]()).
-			Wrapf(resolveErr, "resolve declared profile failed")
-	}
-
-	if report := rt.container.ShutdownReport(ctx); report != nil && len(report.Errors) > 0 {
-		return "", errors.Join(resolveErr, report)
-	}
-	if resolveErr != nil {
-		return "", resolveErr
-	}
-
-	return profile, nil
 }
 
 func (p *buildPlan) Build(ctx context.Context) (_ *Runtime, err error) {
@@ -201,114 +108,22 @@ func (p *buildPlan) build(ctx context.Context, parent *Runtime) (_ *Runtime, err
 		return nil, err
 	}
 
-	if parent == nil {
-		rt = newRuntime(p.spec, p)
-	} else {
-		rt, err = newChildRuntime(p.spec, p, parent)
-		if err != nil {
-			return nil, err
-		}
+	rt, err = p.newRuntime(parent)
+	if err != nil {
+		return nil, err
 	}
-	p.registerRuntimeCoreServices(rt)
 
-	providersRegistered, err := p.prepareFrameworkConfig(ctx, rt)
+	debugEnabled, err := p.prepareRuntimeBuild(ctx, rt)
 	if err != nil {
 		err = cleanupBuildFailure(ctx, rt, err)
 		return nil, err
 	}
 
-	debugEnabled := eventLoggerEnabled(ctx, rt.eventLogger, EventLevelDebug)
-	infoEnabled := eventLoggerEnabled(ctx, rt.eventLogger, EventLevelInfo)
-	p.logBuildStart(ctx, rt, infoEnabled, debugEnabled)
-
-	if providersRegistered {
-		p.logProviderRegistrations(ctx, rt, debugEnabled)
-	} else {
-		p.registerProviders(ctx, rt, debugEnabled)
-	}
-	newContributionPlan(p.modules).register(ctx, rt, debugEnabled)
-
-	if err := p.bindHooksAndRunSetups(ctx, rt, debugEnabled); err != nil {
+	if err := p.completeRuntimeBuild(ctx, rt, debugEnabled); err != nil {
 		err = cleanupBuildFailure(ctx, rt, err)
 		return nil, err
 	}
-
-	if err := p.runInvokes(ctx, rt, debugEnabled); err != nil {
-		err = cleanupBuildFailure(ctx, rt, err)
-		return nil, err
-	}
-
-	if err := p.buildSubApps(ctx, rt); err != nil {
-		err = cleanupBuildFailure(ctx, rt, err)
-		return nil, err
-	}
-
-	rt.transitionState(ctx, AppStateBuilt, "build completed")
-	rt.logDebugInformation(ctx)
 	return rt, nil
-}
-
-func (p *buildPlan) buildSubApps(ctx context.Context, rt *Runtime) error {
-	if p == nil || p.subplans == nil || p.subplans.Len() == 0 {
-		return nil
-	}
-
-	var buildErr error
-	p.subplans.Range(func(_ int, subplan *buildPlan) bool {
-		subrt, err := subplan.build(ctx, rt)
-		if err != nil {
-			buildErr = err
-			return false
-		}
-		rt.subapps.Add(subrt)
-		return true
-	})
-	return buildErr
-}
-
-func (p *buildPlan) emitBuildResult(ctx context.Context, rt *Runtime, duration time.Duration, err error) {
-	if p == nil || p.spec == nil {
-		return
-	}
-	if rt == nil {
-		event := p.buildEvent(duration, err)
-		p.spec.emitBuild(ctx, event)
-		return
-	}
-	event := p.runtimeBuildEvent(rt, duration, err)
-	emitEventLogger(ctx, rt.eventLogger, event)
-	emitObservers(ctx, rt.spec.observerDispatchers, func(ctx context.Context, observer Observer) {
-		observer.OnBuild(ctx, event)
-	})
-}
-
-func cleanupBuildFailure(ctx context.Context, rt *Runtime, buildErr error) error {
-	if rt == nil || rt.container == nil {
-		return buildErr
-	}
-
-	report := rt.container.ShutdownReport(ctx)
-	if report == nil || len(report.Errors) == 0 {
-		return buildErr
-	}
-	rt.logMessage(ctx, EventLevelError, "build cleanup failed", "app", rt.Name(), "error", report)
-	return errors.Join(buildErr, report)
-}
-
-func (p *buildPlan) logBuildStart(ctx context.Context, rt *Runtime, infoEnabled, debugEnabled bool) {
-	if infoEnabled {
-		rt.logMessage(ctx, EventLevelInfo, "building app", "app", p.spec.meta.Name, "profile", p.profile)
-	}
-	if debugEnabled {
-		rt.logMessage(ctx, EventLevelDebug, "build plan ready",
-			"app", p.spec.meta.Name,
-			"modules", p.modules.Len(),
-			"providers", countModuleProviders(p.modules),
-			"hooks", countModuleHooks(p.modules),
-			"setups", countModuleSetups(p.modules),
-			"invokes", countModuleInvokes(p.modules),
-		)
-	}
 }
 
 func (p *buildPlan) declaresProviderOutput(ref ServiceRef) bool {

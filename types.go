@@ -89,6 +89,7 @@ type appSpec struct {
 	meta                     AppMeta
 	profile                  Profile
 	profileConfigured        bool
+	serviceNames             *serviceNamer
 	modules                  collectionx.List[Module]
 	logger                   *slog.Logger
 	loggerConfigured         bool

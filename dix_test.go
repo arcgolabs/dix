@@ -38,16 +38,6 @@ func (d *Database) Connect() error {
 	return nil
 }
 
-type testGreeter interface {
-	Greet() string
-}
-
-type testGreeterImpl struct{}
-
-func (g *testGreeterImpl) Greet() string {
-	return "hello"
-}
-
 type cleanupService struct {
 	shutdowns int
 }

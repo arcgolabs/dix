@@ -19,6 +19,13 @@ func serviceNameOf[T any]() string {
 	return serviceTypeName(reflect.TypeFor[T]())
 }
 
+func serviceNameOfSpec[T any](spec *appSpec) string {
+	if spec == nil {
+		return serviceNameOf[T]()
+	}
+	return serviceNameOfWith[T](spec.serviceNames)
+}
+
 func serviceNameOfWith[T any](n *serviceNamer) string {
 	if n == nil {
 		return serviceNameOf[T]()

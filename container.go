@@ -2,6 +2,7 @@ package dix
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -21,6 +22,10 @@ type Container struct {
 }
 
 func newContainer(logger *slog.Logger) *Container {
+	return newContainerWithServiceNamer(logger, newServiceNamer())
+}
+
+func newContainerWithServiceNamer(logger *slog.Logger, serviceNames *serviceNamer) *Container {
 	if logger == nil {
 		logger = defaultLogger()
 	}
@@ -34,15 +39,15 @@ func newContainer(logger *slog.Logger) *Container {
 		Logf: func(format string, args ...any) {
 			logger.Debug(fmt.Sprintf(format, args...))
 		},
-	}), newServiceNamer())
+	}), serviceNames)
 }
 
 func newChildContainer(parent *Container, name string, logger *slog.Logger) (*Container, error) {
 	if parent == nil || parent.injector == nil {
-		return nil, fmt.Errorf("parent container is nil")
+		return nil, errors.New("parent container is nil")
 	}
 	if name == "" {
-		return nil, fmt.Errorf("child container name is required")
+		return nil, errors.New("child container name is required")
 	}
 	if logger == nil {
 		logger = parent.logger

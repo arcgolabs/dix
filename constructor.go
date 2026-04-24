@@ -18,6 +18,7 @@ func New(name string, opts ...AppOption) *App {
 	spec := &appSpec{
 		meta:                AppMeta{Name: name},
 		profile:             ProfileDefault,
+		serviceNames:        newServiceNamer(),
 		modules:             collectionx.NewList[Module](),
 		logger:              defaultLogger(),
 		observers:           collectionx.NewList[Observer](),

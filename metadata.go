@@ -8,28 +8,6 @@ import (
 	"github.com/samber/oops"
 )
 
-func validateTypedGraphReport(plan *buildPlan) ValidationReport {
-	return validateTypedGraphReportWithInherited(plan, nil)
-}
-
-func validateBuildPlanTreeReport(plan *buildPlan) ValidationReport {
-	return validateBuildPlanTreeReportWithInherited(plan, nil)
-}
-
-func validateBuildPlanTreeReportWithInherited(plan *buildPlan, inherited *collectionset.Set[string]) ValidationReport {
-	report := validateTypedGraphReportWithInherited(plan, inherited)
-	if plan == nil {
-		return report
-	}
-
-	nextInherited := mergeServiceNameSets(inherited, declaredServiceNames(plan))
-	plan.subplans.Range(func(_ int, subplan *buildPlan) bool {
-		report = mergeValidationReports(report, validateBuildPlanTreeReportWithInherited(subplan, nextInherited))
-		return true
-	})
-	return report
-}
-
 func validateTypedGraphReportWithInherited(plan *buildPlan, inherited *collectionset.Set[string]) ValidationReport {
 	if plan == nil || plan.modules == nil {
 		return ValidationReport{}
@@ -65,13 +43,13 @@ func newValidationState(
 ) *validationState {
 	known := collectionset.NewSetWithCapacity[string](64)
 	if includeDefaultLogger {
-		known.Add(serviceNameOf[*slog.Logger]())
+		known.Add(serviceNameOfSpec[*slog.Logger](nil))
 	}
 	if includeDefaultAppMeta {
-		known.Add(serviceNameOf[AppMeta]())
+		known.Add(serviceNameOfSpec[AppMeta](nil))
 	}
 	if includeDefaultProfile {
-		known.Add(serviceNameOf[Profile]())
+		known.Add(serviceNameOfSpec[Profile](nil))
 	}
 
 	return &validationState{
@@ -94,46 +72,6 @@ func declaredServiceNames(plan *buildPlan) *collectionset.Set[string] {
 	)
 	collectDeclaredOutputs(plan.modules, state)
 	return state.known
-}
-
-func cloneServiceNameSet(items *collectionset.Set[string]) *collectionset.Set[string] {
-	if items == nil {
-		return collectionset.NewSet[string]()
-	}
-	return collectionset.NewSetWithCapacity[string](items.Len(), items.Values()...)
-}
-
-func mergeServiceNameSets(left *collectionset.Set[string], right *collectionset.Set[string]) *collectionset.Set[string] {
-	merged := cloneServiceNameSet(left)
-	if right != nil {
-		merged.Add(right.Values()...)
-	}
-	return merged
-}
-
-func mergeValidationReports(left ValidationReport, right ValidationReport) ValidationReport {
-	return ValidationReport{
-		Errors:   mergeLists(left.Errors, right.Errors),
-		Warnings: mergeLists(left.Warnings, right.Warnings),
-	}
-}
-
-func mergeLists[T any](left collectionx.List[T], right collectionx.List[T]) collectionx.List[T] {
-	size := 0
-	if left != nil {
-		size += left.Len()
-	}
-	if right != nil {
-		size += right.Len()
-	}
-	merged := collectionx.NewListWithCapacity[T](size)
-	if left != nil {
-		merged.Add(left.Values()...)
-	}
-	if right != nil {
-		merged.Add(right.Values()...)
-	}
-	return merged
 }
 
 func collectDeclaredOutputs(modules collectionx.List[*moduleSpec], state *validationState) {
