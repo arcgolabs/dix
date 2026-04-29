@@ -3,16 +3,16 @@ module github.com/arcgolabs/dix/advanced
 go 1.26.2
 
 require (
-	github.com/arcgolabs/collectionx/list v0.5.0
-	github.com/arcgolabs/collectionx/mapping v0.5.0
+	github.com/arcgolabs/collectionx/list v0.6.0
+	github.com/arcgolabs/collectionx/mapping v0.6.0
 	github.com/samber/do/v2 v2.0.0
 	github.com/samber/oops v1.21.0
 	github.com/stretchr/testify v1.11.1
 )
 
 require (
-	github.com/arcgolabs/collectionx/internal v0.5.0 // indirect
-	github.com/arcgolabs/collectionx/set v0.5.0 // indirect
+	github.com/arcgolabs/collectionx/internal v0.6.0 // indirect
+	github.com/arcgolabs/collectionx/set v0.6.0 // indirect
 	github.com/arcgolabs/pkg/option v0.0.3 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect

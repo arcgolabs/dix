@@ -5,9 +5,9 @@ go 1.26.2
 require github.com/arcgolabs/observabilityx v0.3.0
 
 require (
-	github.com/arcgolabs/collectionx/internal v0.5.0 // indirect
-	github.com/arcgolabs/collectionx/list v0.5.0 // indirect
-	github.com/arcgolabs/collectionx/mapping v0.5.0 // indirect
+	github.com/arcgolabs/collectionx/internal v0.6.0 // indirect
+	github.com/arcgolabs/collectionx/list v0.6.0 // indirect
+	github.com/arcgolabs/collectionx/mapping v0.6.0 // indirect
 	github.com/arcgolabs/pkg/option v0.0.3 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/oklog/ulid/v2 v2.1.1 // indirect
