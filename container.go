@@ -4,10 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
-
-	"github.com/arcgolabs/collectionx"
+	collectionlist "github.com/arcgolabs/collectionx/list"
 	"github.com/samber/do/v2"
+	"log/slog"
 )
 
 // Container wraps samber/do.Injector.
@@ -16,7 +15,7 @@ import (
 type Container struct {
 	injector     do.Injector
 	serviceNames *serviceNamer
-	healthChecks collectionx.List[healthCheckEntry]
+	healthChecks *collectionlist.List[healthCheckEntry]
 	logger       *slog.Logger
 	eventLogger  EventLogger
 }
@@ -65,7 +64,7 @@ func newContainerWithInjector(logger *slog.Logger, injector do.Injector, service
 	return &Container{
 		injector:     injector,
 		serviceNames: serviceNames,
-		healthChecks: collectionx.NewList[healthCheckEntry](),
+		healthChecks: collectionlist.NewList[healthCheckEntry](),
 		logger:       logger,
 	}
 }

@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/arcgolabs/logx"
 	"github.com/arcgolabs/dix"
+	"github.com/arcgolabs/logx"
 )
 
 type dbConfig struct {

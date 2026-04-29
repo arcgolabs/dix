@@ -2,10 +2,9 @@ package dix
 
 import (
 	"context"
+	collectionlist "github.com/arcgolabs/collectionx/list"
 	"log/slog"
 	"sync"
-
-	"github.com/arcgolabs/collectionx"
 )
 
 type observerDispatchCall struct {
@@ -18,7 +17,7 @@ type observerDispatcher struct {
 	observer       Observer
 	loggerProvider func() *slog.Logger
 
-	queue     collectionx.ConcurrentDeque[observerDispatchCall]
+	queue     *collectionlist.ConcurrentDeque[observerDispatchCall]
 	notify    chan struct{}
 	startOnce sync.Once
 }
@@ -28,7 +27,7 @@ func newObserverDispatcher(index int, observer Observer, loggerProvider func() *
 		index:          index,
 		observer:       observer,
 		loggerProvider: loggerProvider,
-		queue:          collectionx.NewConcurrentDeque[observerDispatchCall](),
+		queue:          collectionlist.NewConcurrentDeque[observerDispatchCall](),
 		notify:         make(chan struct{}, 1),
 	}
 }
@@ -38,10 +37,10 @@ func (spec *appSpec) appendObserversWithLogger(loggerProvider func() *slog.Logge
 		return
 	}
 	if spec.observers == nil {
-		spec.observers = collectionx.NewList[Observer]()
+		spec.observers = collectionlist.NewList[Observer]()
 	}
 	if spec.observerDispatchers == nil {
-		spec.observerDispatchers = collectionx.NewList[*observerDispatcher]()
+		spec.observerDispatchers = collectionlist.NewList[*observerDispatcher]()
 	}
 	for _, observer := range observers {
 		if observer == nil {
@@ -56,7 +55,7 @@ func (spec *appSpec) rebuildObserverDispatchers(loggerProvider func() *slog.Logg
 	if spec == nil {
 		return
 	}
-	spec.observerDispatchers = collectionx.NewListWithCapacity[*observerDispatcher](spec.observers.Len())
+	spec.observerDispatchers = collectionlist.NewListWithCapacity[*observerDispatcher](spec.observers.Len())
 	observers := spec.observers.Values()
 	for index, observer := range observers {
 		if observer == nil {

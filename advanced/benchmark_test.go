@@ -1,3 +1,5 @@
+//revive:disable:file-length-limit Advanced benchmark coverage is grouped to keep scenario setup shared.
+
 package advanced_test
 
 import (

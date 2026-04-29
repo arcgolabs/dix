@@ -2,9 +2,8 @@ package dix
 
 import (
 	"fmt"
-	"strings"
-
-	"github.com/arcgolabs/collectionx"
+	collectionlist "github.com/arcgolabs/collectionx/list"
+	collectionmapping "github.com/arcgolabs/collectionx/mapping"
 	collectionset "github.com/arcgolabs/collectionx/set"
 	"github.com/samber/oops"
 )
@@ -19,7 +18,7 @@ const (
 
 type moduleVisitContext struct {
 	Profile Profile
-	Path    collectionx.List[string]
+	Path    *collectionlist.List[string]
 	Depth   int
 }
 
@@ -36,9 +35,9 @@ type moduleVisitorFuncs struct {
 type moduleWalkState struct {
 	visited    *collectionset.Set[*moduleSpec]
 	visiting   *collectionset.Set[*moduleSpec]
-	knownNames collectionx.Map[string, *moduleSpec]
+	knownNames *collectionmapping.Map[string, *moduleSpec]
 	stopped    bool
-	path       collectionx.List[string]
+	path       *collectionlist.List[string]
 	profile    Profile
 	active     func(*moduleSpec, Profile) bool
 	visitor    moduleVisitor
@@ -59,30 +58,30 @@ func (v moduleVisitorFuncs) Leave(ctx moduleVisitContext, spec *moduleSpec) erro
 }
 
 // flattenModules walks active modules in dependency order and returns leaf-first results.
-func flattenModules(modules collectionx.List[Module], profile Profile) (collectionx.List[*moduleSpec], error) {
+func flattenModules(modules *collectionlist.List[Module], profile Profile) (*collectionlist.List[*moduleSpec], error) {
 	return flattenModuleList(modules, profile)
 }
 
-func flattenModuleList(modules collectionx.List[Module], profile Profile) (collectionx.List[*moduleSpec], error) {
+func flattenModuleList(modules *collectionlist.List[Module], profile Profile) (*collectionlist.List[*moduleSpec], error) {
 	return flattenModuleListWithActive(modules, profile, isActiveForProfile)
 }
 
-func flattenProfileBootstrapModuleList(modules collectionx.List[Module]) (collectionx.List[*moduleSpec], error) {
+func flattenProfileBootstrapModuleList(modules *collectionlist.List[Module]) (*collectionlist.List[*moduleSpec], error) {
 	return flattenModuleListWithActive(modules, ProfileDefault, isActiveForProfileBootstrap)
 }
 
 func flattenModuleListWithActive(
-	modules collectionx.List[Module],
+	modules *collectionlist.List[Module],
 	profile Profile,
 	active func(*moduleSpec, Profile) bool,
-) (collectionx.List[*moduleSpec], error) {
+) (*collectionlist.List[*moduleSpec], error) {
 	capacity := 8
 	if modules != nil && modules.Len() > 0 {
 		if c := modules.Len() * 2; c > capacity {
 			capacity = c
 		}
 	}
-	result := collectionx.NewListWithCapacity[*moduleSpec](capacity)
+	result := collectionlist.NewListWithCapacity[*moduleSpec](capacity)
 
 	err := walkModuleListWithActive(modules, profile, active, moduleVisitorFuncs{
 		leave: func(_ moduleVisitContext, spec *moduleSpec) error {
@@ -97,16 +96,16 @@ func flattenModuleListWithActive(
 	return result, nil
 }
 
-func walkModules(modules collectionx.List[Module], profile Profile, visitor moduleVisitor) error {
+func walkModules(modules *collectionlist.List[Module], profile Profile, visitor moduleVisitor) error {
 	return walkModuleList(modules, profile, visitor)
 }
 
-func walkModuleList(modules collectionx.List[Module], profile Profile, visitor moduleVisitor) error {
+func walkModuleList(modules *collectionlist.List[Module], profile Profile, visitor moduleVisitor) error {
 	return walkModuleListWithActive(modules, profile, isActiveForProfile, visitor)
 }
 
 func walkModuleListWithActive(
-	modules collectionx.List[Module],
+	modules *collectionlist.List[Module],
 	profile Profile,
 	active func(*moduleSpec, Profile) bool,
 	visitor moduleVisitor,
@@ -126,15 +125,15 @@ func newModuleWalkState(profile Profile, active func(*moduleSpec, Profile) bool,
 	return &moduleWalkState{
 		visited:    collectionset.NewSetWithCapacity[*moduleSpec](16),
 		visiting:   collectionset.NewSetWithCapacity[*moduleSpec](8),
-		knownNames: collectionx.NewMapWithCapacity[string, *moduleSpec](8),
-		path:       collectionx.NewListWithCapacity[string](8),
+		knownNames: collectionmapping.NewMapWithCapacity[string, *moduleSpec](8),
+		path:       collectionlist.NewListWithCapacity[string](8),
 		profile:    profile,
 		active:     active,
 		visitor:    visitor,
 	}
 }
 
-func (s *moduleWalkState) walkAll(modules collectionx.List[Module]) error {
+func (s *moduleWalkState) walkAll(modules *collectionlist.List[Module]) error {
 	var walkErr error
 	modules.Range(func(_ int, mod Module) bool {
 		walkErr = s.walk(mod.spec)
@@ -263,11 +262,11 @@ func moduleKey(spec *moduleSpec) string {
 	return fmt.Sprintf("<anonymous:%p>", spec)
 }
 
-func formatModulePath(path collectionx.List[string]) string {
+func formatModulePath(path *collectionlist.List[string]) string {
 	if path.IsEmpty() {
 		return "<root>"
 	}
-	return strings.Join(path.Values(), " -> ")
+	return path.Join(" -> ")
 }
 
 func isActiveForProfile(spec *moduleSpec, profile Profile) bool {

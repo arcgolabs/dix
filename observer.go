@@ -2,9 +2,8 @@ package dix
 
 import (
 	"context"
+	collectionlist "github.com/arcgolabs/collectionx/list"
 	"time"
-
-	"github.com/arcgolabs/collectionx"
 )
 
 // Observer receives asynchronously dispatched framework lifecycle events emitted by dix.
@@ -123,7 +122,7 @@ func (r *Runtime) emitStateTransition(ctx context.Context, event StateTransition
 	})
 }
 
-func emitObservers(ctx context.Context, dispatchers collectionx.List[*observerDispatcher], emit func(context.Context, Observer)) {
+func emitObservers(ctx context.Context, dispatchers *collectionlist.List[*observerDispatcher], emit func(context.Context, Observer)) {
 	if dispatchers == nil || dispatchers.Len() == 0 || emit == nil {
 		return
 	}

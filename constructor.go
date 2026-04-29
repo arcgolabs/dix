@@ -1,11 +1,11 @@
 package dix
 
 import (
+	collectionlist "github.com/arcgolabs/collectionx/list"
+	collectionset "github.com/arcgolabs/collectionx/set"
+	"github.com/arcgolabs/pkg/option"
 	"log/slog"
 	"time"
-
-	"github.com/arcgolabs/collectionx"
-	"github.com/arcgolabs/pkg/option"
 )
 
 // NewDefault creates an application with the default framework name.
@@ -19,14 +19,14 @@ func New(name string, opts ...AppOption) *App {
 		meta:                AppMeta{Name: name},
 		profile:             ProfileDefault,
 		serviceNames:        newServiceNamer(),
-		modules:             collectionx.NewList[Module](),
+		modules:             collectionlist.NewList[Module](),
 		logger:              defaultLogger(),
-		observers:           collectionx.NewList[Observer](),
-		observerDispatchers: collectionx.NewList[*observerDispatcher](),
-		subapps:             collectionx.NewList[*App](),
+		observers:           collectionlist.NewList[Observer](),
+		observerDispatchers: collectionlist.NewList[*observerDispatcher](),
+		subapps:             collectionlist.NewList[*App](),
 		runStopTimeout:      DefaultRunStopTimeout,
 		debug: debugSettings{
-			namedServiceDependencies: collectionx.NewOrderedSet[string](),
+			namedServiceDependencies: collectionset.NewOrderedSet[string](),
 		},
 	}
 

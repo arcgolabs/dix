@@ -4,14 +4,13 @@ package dix
 
 import (
 	"context"
+	collectionlist "github.com/arcgolabs/collectionx/list"
+	"github.com/samber/oops"
 	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
-
-	"github.com/arcgolabs/collectionx"
-	"github.com/samber/oops"
 )
 
 // AppOption configures an App specification during construction.
@@ -129,17 +128,17 @@ func (a *App) RunStopTimeout() time.Duration {
 }
 
 // Modules returns the configured application modules.
-func (a *App) Modules() collectionx.List[Module] {
+func (a *App) Modules() *collectionlist.List[Module] {
 	if a == nil || a.spec == nil {
-		return collectionx.NewList[Module]()
+		return collectionlist.NewList[Module]()
 	}
 	return a.spec.modules.Clone()
 }
 
 // SubApps returns the configured child applications.
-func (a *App) SubApps() collectionx.List[*App] {
+func (a *App) SubApps() *collectionlist.List[*App] {
 	if a == nil || a.spec == nil {
-		return collectionx.NewList[*App]()
+		return collectionlist.NewList[*App]()
 	}
 	return a.spec.subapps.Clone()
 }

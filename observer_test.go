@@ -5,13 +5,12 @@ package dix_test
 import (
 	"context"
 	"errors"
+	collectionlist "github.com/arcgolabs/collectionx/list"
+	"github.com/arcgolabs/dix"
+	"github.com/stretchr/testify/require"
 	"sync"
 	"testing"
 	"time"
-
-	"github.com/arcgolabs/collectionx"
-	"github.com/arcgolabs/dix"
-	"github.com/stretchr/testify/require"
 )
 
 type recordingObserver struct {
@@ -141,8 +140,8 @@ func TestDIProvidedObserverListReceivesLifecycleEvents(t *testing.T) {
 		dix.WithModule(
 			dix.NewModule("observer",
 				dix.Providers(
-					dix.Provider0(func() collectionx.List[dix.Observer] {
-						return collectionx.NewList[dix.Observer](first, second)
+					dix.Provider0(func() *collectionlist.List[dix.Observer] {
+						return collectionlist.NewList[dix.Observer](first, second)
 					}),
 				),
 			),

@@ -2,12 +2,12 @@ package dix
 
 import (
 	"fmt"
+	collectionlist "github.com/arcgolabs/collectionx/list"
+	collectionmapping "github.com/arcgolabs/collectionx/mapping"
+	"github.com/samber/do/v2"
 	"strconv"
 	"strings"
 	"sync/atomic"
-
-	"github.com/arcgolabs/collectionx"
-	"github.com/samber/do/v2"
 )
 
 var anonymousContributionID atomic.Uint64
@@ -19,8 +19,8 @@ type ProviderOption func(*providerOptions)
 type ContributionOption func(*contributionOptions)
 
 type providerOptions struct {
-	aliases       collectionx.List[aliasSpec]
-	contributions collectionx.List[contributionOptionSpec]
+	aliases       *collectionlist.List[aliasSpec]
+	contributions *collectionlist.List[contributionOptionSpec]
 }
 
 type aliasSpec struct {
@@ -43,8 +43,8 @@ type contributionOptions struct {
 
 type collectionFactory struct {
 	target   ServiceRef
-	outputs  collectionx.List[ServiceRef]
-	register func(*Container, collectionx.List[ContributionRef], serviceNameSet)
+	outputs  *collectionlist.List[ServiceRef]
+	register func(*Container, *collectionlist.List[ContributionRef], serviceNameSet)
 }
 
 type contributionRegistration struct {
@@ -90,7 +90,7 @@ func Into[T any](options ...ContributionOption) ProviderOption {
 			factory: collectionFactory{
 				target:  target,
 				outputs: collectionServiceRefs[T](),
-				register: func(c *Container, contributions collectionx.List[ContributionRef], explicit serviceNameSet) {
+				register: func(c *Container, contributions *collectionlist.List[ContributionRef], explicit serviceNameSet) {
 					registerCollectionProviders[T](c, contributions, explicit)
 				},
 			},
@@ -98,12 +98,12 @@ func Into[T any](options ...ContributionOption) ProviderOption {
 	}
 }
 
-func collectionServiceRefs[T any]() collectionx.List[ServiceRef] {
+func collectionServiceRefs[T any]() *collectionlist.List[ServiceRef] {
 	return ServiceRefs(
-		TypedService[collectionx.List[T]](),
+		TypedService[*collectionlist.List[T]](),
 		TypedService[map[string]T](),
-		TypedService[collectionx.Map[string, T]](),
-		TypedService[collectionx.OrderedMap[string, T]](),
+		TypedService[*collectionmapping.Map[string, T]](),
+		TypedService[*collectionmapping.OrderedMap[string, T]](),
 	)
 }
 
@@ -130,7 +130,7 @@ func Order(order int) ContributionOption {
 func newTypedProviderFunc[T any](
 	label string,
 	register func(*Container),
-	deps collectionx.List[ServiceRef],
+	deps *collectionlist.List[ServiceRef],
 	opts ...ProviderOption,
 ) ProviderFunc {
 	output := TypedService[T]()
@@ -157,8 +157,8 @@ func newTypedProviderFunc[T any](
 
 func applyProviderOptions(opts ...ProviderOption) providerOptions {
 	out := providerOptions{
-		aliases:       collectionx.NewList[aliasSpec](),
-		contributions: collectionx.NewList[contributionOptionSpec](),
+		aliases:       collectionlist.NewList[aliasSpec](),
+		contributions: collectionlist.NewList[contributionOptionSpec](),
 	}
 	for _, opt := range opts {
 		if opt != nil {
@@ -168,8 +168,8 @@ func applyProviderOptions(opts ...ProviderOption) providerOptions {
 	return out
 }
 
-func aliasRefs(aliases collectionx.List[aliasSpec]) collectionx.List[ServiceRef] {
-	out := collectionx.NewListWithCapacity[ServiceRef](aliases.Len())
+func aliasRefs(aliases *collectionlist.List[aliasSpec]) *collectionlist.List[ServiceRef] {
+	out := collectionlist.NewListWithCapacity[ServiceRef](aliases.Len())
 	aliases.Range(func(_ int, alias aliasSpec) bool {
 		out.Add(alias.target)
 		return true
@@ -179,15 +179,15 @@ func aliasRefs(aliases collectionx.List[aliasSpec]) collectionx.List[ServiceRef]
 
 func buildContributionRefs(
 	sourceName string,
-	specs collectionx.List[contributionOptionSpec],
+	specs *collectionlist.List[contributionOptionSpec],
 ) (
-	collectionx.List[ContributionRef],
-	collectionx.List[collectionFactory],
-	collectionx.List[contributionRegistration],
+	*collectionlist.List[ContributionRef],
+	*collectionlist.List[collectionFactory],
+	*collectionlist.List[contributionRegistration],
 ) {
-	refs := collectionx.NewListWithCapacity[ContributionRef](specs.Len())
-	factories := collectionx.NewListWithCapacity[collectionFactory](specs.Len())
-	registrations := collectionx.NewListWithCapacity[contributionRegistration](specs.Len())
+	refs := collectionlist.NewListWithCapacity[ContributionRef](specs.Len())
+	factories := collectionlist.NewListWithCapacity[collectionFactory](specs.Len())
+	registrations := collectionlist.NewListWithCapacity[contributionRegistration](specs.Len())
 	specs.Range(func(index int, spec contributionOptionSpec) bool {
 		service := contributionServiceName(spec.target.Name, sourceName, index)
 		ref := ContributionRef{
@@ -217,14 +217,14 @@ func anonymousContributionServiceName(targetName string) string {
 	return "dix:contribution:" + targetName + ":anonymous:" + strconv.FormatUint(id, 10)
 }
 
-func registerAliases(c *Container, source string, aliases collectionx.List[aliasSpec]) {
+func registerAliases(c *Container, source string, aliases *collectionlist.List[aliasSpec]) {
 	aliases.Range(func(_ int, alias aliasSpec) bool {
 		alias.register(c, source)
 		return true
 	})
 }
 
-func registerContributionAliases(c *Container, source string, registrations collectionx.List[contributionRegistration]) {
+func registerContributionAliases(c *Container, source string, registrations *collectionlist.List[contributionRegistration]) {
 	registrations.Range(func(_ int, registration contributionRegistration) bool {
 		registration.register(c, source, registration.ref.Service.Name)
 		return true

@@ -3,9 +3,7 @@ package dix
 import (
 	"context"
 	"errors"
-	"strings"
-
-	"github.com/arcgolabs/collectionx"
+	collectionlist "github.com/arcgolabs/collectionx/list"
 )
 
 // Validate validates the immutable app spec and current module graph.
@@ -27,7 +25,7 @@ func (a *App) ValidateContext(ctx context.Context) error {
 func (a *App) ValidateReportContext(ctx context.Context) ValidationReport {
 	_, report, err := a.cachedBuildPlan(ctx)
 	if err != nil && (report.Errors == nil || report.Errors.IsEmpty()) {
-		report.Errors = collectionx.NewList(err)
+		report.Errors = collectionlist.NewList(err)
 	}
 	return report
 }
@@ -39,11 +37,11 @@ func cloneValidationReport(report ValidationReport) ValidationReport {
 	}
 }
 
-func cloneList[T any](items collectionx.List[T]) collectionx.List[T] {
+func cloneList[T any](items *collectionlist.List[T]) *collectionlist.List[T] {
 	if items == nil || items.Len() == 0 {
-		return collectionx.NewList[T]()
+		return collectionlist.NewList[T]()
 	}
-	return collectionx.NewListWithCapacity(items.Len(), items.Values()...)
+	return collectionlist.NewListWithCapacity(items.Len(), items.Values()...)
 }
 
 // HasWarnings reports whether the validation report contains warnings.
@@ -70,7 +68,7 @@ func (r ValidationReport) WarningSummary() string {
 		return ""
 	}
 
-	lines := collectionx.MapList(r.Warnings, func(_ int, warning ValidationWarning) string {
+	return r.Warnings.Join("\n", func(_ int, warning ValidationWarning) string {
 		line := string(warning.Kind)
 		if warning.Module != "" {
 			line += " module=" + warning.Module
@@ -83,5 +81,4 @@ func (r ValidationReport) WarningSummary() string {
 		}
 		return line
 	})
-	return strings.Join(lines.Values(), "\n")
 }

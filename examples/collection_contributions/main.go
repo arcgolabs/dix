@@ -4,10 +4,10 @@ package main
 import (
 	"context"
 	"fmt"
-	"sort"
-
-	"github.com/arcgolabs/collectionx"
+	collectionlist "github.com/arcgolabs/collectionx/list"
+	collectionmapping "github.com/arcgolabs/collectionx/mapping"
 	"github.com/arcgolabs/dix"
+	"sort"
 )
 
 type appConfig struct {
@@ -55,10 +55,10 @@ func (e *debugEndpoint) Route() string {
 
 type router struct {
 	endpoints []endpoint
-	byName    collectionx.OrderedMap[string, endpoint]
+	byName    *collectionmapping.OrderedMap[string, endpoint]
 }
 
-func newRouter(endpoints []endpoint, byName collectionx.OrderedMap[string, endpoint]) *router {
+func newRouter(endpoints []endpoint, byName *collectionmapping.OrderedMap[string, endpoint]) *router {
 	return &router{endpoints: endpoints, byName: byName}
 }
 
@@ -121,7 +121,7 @@ func main() {
 	printValues("router routes:", routerValue.routes())
 	printValues("ordered keys:", routerValue.byName.Keys())
 
-	endpointList, err := dix.ResolveAs[collectionx.List[endpoint]](rt.Container())
+	endpointList, err := dix.ResolveAs[*collectionlist.List[endpoint]](rt.Container())
 	if err != nil {
 		panic(err)
 	}

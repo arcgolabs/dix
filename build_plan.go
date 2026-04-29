@@ -2,20 +2,19 @@ package dix
 
 import (
 	"context"
-	"time"
-
-	"github.com/arcgolabs/collectionx"
+	collectionlist "github.com/arcgolabs/collectionx/list"
 	collectionset "github.com/arcgolabs/collectionx/set"
 	"github.com/samber/oops"
+	"time"
 )
 
 type buildPlan struct {
 	spec              *appSpec
-	modules           collectionx.List[*moduleSpec]
+	modules           *collectionlist.List[*moduleSpec]
 	profile           Profile
 	parent            *buildPlan
 	inheritedServices *collectionset.Set[string]
-	subplans          collectionx.List[*buildPlan]
+	subplans          *collectionlist.List[*buildPlan]
 }
 
 func newUnvalidatedBuildPlan(ctx context.Context, app *App) (*buildPlan, error) {
@@ -51,7 +50,7 @@ func newUnvalidatedBuildPlanWithParent(ctx context.Context, app *App, parent *bu
 		profile:           profile,
 		parent:            parent,
 		inheritedServices: inheritedServicesForParent(parent),
-		subplans:          collectionx.NewList[*buildPlan](),
+		subplans:          collectionlist.NewList[*buildPlan](),
 	}
 
 	subplans, err := buildSubPlans(ctx, app.spec.subapps, plan)
@@ -86,7 +85,7 @@ func newProfileBootstrapPlanWithProfile(app *App, profile Profile) (*buildPlan, 
 		modules:           modules,
 		profile:           profile,
 		inheritedServices: collectionset.NewSet[string](),
-		subplans:          collectionx.NewList[*buildPlan](),
+		subplans:          collectionlist.NewList[*buildPlan](),
 	}, nil
 }
 
@@ -130,7 +129,7 @@ func (p *buildPlan) declaresProviderOutput(ref ServiceRef) bool {
 	if p == nil || p.modules == nil || ref.Name == "" {
 		return false
 	}
-	_, found := collectionx.FindList(p.modules, func(_ int, mod *moduleSpec) bool {
+	_, found := collectionlist.FindList(p.modules, func(_ int, mod *moduleSpec) bool {
 		return mod != nil && mod.providers.AnyMatch(func(_ int, provider ProviderFunc) bool {
 			return provider.meta.Output.Name == ref.Name
 		})

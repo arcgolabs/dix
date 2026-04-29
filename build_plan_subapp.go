@@ -3,14 +3,13 @@ package dix
 import (
 	"context"
 	"errors"
-
-	"github.com/arcgolabs/collectionx"
+	collectionlist "github.com/arcgolabs/collectionx/list"
 	collectionset "github.com/arcgolabs/collectionx/set"
 	"github.com/samber/oops"
 )
 
-func buildSubPlans(ctx context.Context, apps collectionx.List[*App], parent *buildPlan) (collectionx.List[*buildPlan], error) {
-	subplans := collectionx.NewList[*buildPlan]()
+func buildSubPlans(ctx context.Context, apps *collectionlist.List[*App], parent *buildPlan) (*collectionlist.List[*buildPlan], error) {
+	subplans := collectionlist.NewList[*buildPlan]()
 	if apps == nil || apps.Len() == 0 {
 		return subplans, nil
 	}

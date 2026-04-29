@@ -1,10 +1,10 @@
 package dix
 
 import (
+	collectionlist "github.com/arcgolabs/collectionx/list"
+	collectionset "github.com/arcgolabs/collectionx/set"
 	"log/slog"
 	"time"
-
-	"github.com/arcgolabs/collectionx"
 )
 
 // Profile represents an application profile (environment).
@@ -77,7 +77,7 @@ type Runtime struct {
 	logger      *slog.Logger
 	eventLogger EventLogger
 	state       AppState
-	subapps     collectionx.List[*Runtime]
+	subapps     *collectionlist.List[*Runtime]
 }
 
 // Module is an immutable module specification.
@@ -90,17 +90,17 @@ type appSpec struct {
 	profile                  Profile
 	profileConfigured        bool
 	serviceNames             *serviceNamer
-	modules                  collectionx.List[Module]
+	modules                  *collectionlist.List[Module]
 	logger                   *slog.Logger
 	loggerConfigured         bool
 	loggerFromContainer      func(*Container) (*slog.Logger, error)
 	eventLogger              EventLogger
 	eventLoggerConfigured    bool
 	eventLoggerFromContainer func(*Container) (EventLogger, error)
-	observers                collectionx.List[Observer]
-	observerDispatchers      collectionx.List[*observerDispatcher]
+	observers                *collectionlist.List[Observer]
+	observerDispatchers      *collectionlist.List[*observerDispatcher]
 	observersConfigured      bool
-	subapps                  collectionx.List[*App]
+	subapps                  *collectionlist.List[*App]
 	runStopTimeout           time.Duration
 	versionConfigured        bool
 	descriptionConfigured    bool
@@ -110,20 +110,20 @@ type appSpec struct {
 type moduleSpec struct {
 	name            string
 	description     string
-	providers       collectionx.List[ProviderFunc]
-	setups          collectionx.List[SetupFunc]
-	invokes         collectionx.List[InvokeFunc]
-	hooks           collectionx.List[HookFunc]
-	imports         collectionx.List[Module]
-	profiles        collectionx.Set[Profile]
-	excludeProfiles collectionx.Set[Profile]
+	providers       *collectionlist.List[ProviderFunc]
+	setups          *collectionlist.List[SetupFunc]
+	invokes         *collectionlist.List[InvokeFunc]
+	hooks           *collectionlist.List[HookFunc]
+	imports         *collectionlist.List[Module]
+	profiles        *collectionset.Set[Profile]
+	excludeProfiles *collectionset.Set[Profile]
 	disabled        bool
-	tags            collectionx.OrderedSet[string]
+	tags            *collectionset.OrderedSet[string]
 }
 
 type debugSettings struct {
 	scopeTree                bool
-	namedServiceDependencies collectionx.OrderedSet[string]
+	namedServiceDependencies *collectionset.OrderedSet[string]
 }
 
 // ValidationWarningKind identifies a validation warning category.
@@ -152,6 +152,6 @@ type ValidationWarning struct {
 
 // ValidationReport summarizes graph validation errors and warnings.
 type ValidationReport struct {
-	Errors   collectionx.List[error]
-	Warnings collectionx.List[ValidationWarning]
+	Errors   *collectionlist.List[error]
+	Warnings *collectionlist.List[ValidationWarning]
 }

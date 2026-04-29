@@ -1,3 +1,5 @@
+//revive:disable:file-length-limit Integration coverage is grouped to keep runtime scenarios readable.
+
 package advanced_test
 
 import (

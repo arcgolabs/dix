@@ -1,7 +1,7 @@
 package dix
 
 import (
-	"github.com/arcgolabs/collectionx"
+	collectionlist "github.com/arcgolabs/collectionx/list"
 	collectionset "github.com/arcgolabs/collectionx/set"
 )
 
@@ -47,7 +47,7 @@ func mergeValidationReports(left, right ValidationReport) ValidationReport {
 	}
 }
 
-func mergeLists[T any](left, right collectionx.List[T]) collectionx.List[T] {
+func mergeLists[T any](left, right *collectionlist.List[T]) *collectionlist.List[T] {
 	size := 0
 	if left != nil {
 		size += left.Len()
@@ -55,7 +55,7 @@ func mergeLists[T any](left, right collectionx.List[T]) collectionx.List[T] {
 	if right != nil {
 		size += right.Len()
 	}
-	merged := collectionx.NewListWithCapacity[T](size)
+	merged := collectionlist.NewListWithCapacity[T](size)
 	if left != nil {
 		merged.Add(left.Values()...)
 	}

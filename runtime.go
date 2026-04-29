@@ -2,12 +2,11 @@ package dix
 
 import (
 	"context"
-	"log/slog"
-	"time"
-
-	"github.com/arcgolabs/collectionx"
+	collectionlist "github.com/arcgolabs/collectionx/list"
 	"github.com/samber/do/v2"
 	"github.com/samber/oops"
+	"log/slog"
+	"time"
 )
 
 func newRuntime(spec *appSpec, plan *buildPlan) *Runtime {
@@ -41,7 +40,7 @@ func cloneAppSpec(spec *appSpec) *appSpec {
 		cloned.serviceNames = newServiceNamer()
 	}
 	cloned.observers = spec.observers.Clone()
-	cloned.observerDispatchers = collectionx.NewList[*observerDispatcher]()
+	cloned.observerDispatchers = collectionlist.NewList[*observerDispatcher]()
 	cloned.subapps = spec.subapps.Clone()
 	return &cloned
 }

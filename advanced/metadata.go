@@ -1,7 +1,7 @@
 package advanced
 
 import (
-	"github.com/arcgolabs/collectionx"
+	collectionlist "github.com/arcgolabs/collectionx/list"
 	"github.com/arcgolabs/dix"
 )
 
@@ -21,9 +21,9 @@ func newProvider(
 func newSetup(
 	label string,
 	run func(*dix.Container) error,
-	dependencies collectionx.List[dix.ServiceRef],
-	provides collectionx.List[dix.ServiceRef],
-	overrides collectionx.List[dix.ServiceRef],
+	dependencies *collectionlist.List[dix.ServiceRef],
+	provides *collectionlist.List[dix.ServiceRef],
+	overrides *collectionlist.List[dix.ServiceRef],
 ) dix.SetupFunc {
 	return dix.NewSetupFunc(func(c *dix.Container, _ dix.Lifecycle) error {
 		return run(c)

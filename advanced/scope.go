@@ -1,7 +1,7 @@
 package advanced
 
 import (
-	"github.com/arcgolabs/collectionx"
+	collectionlist "github.com/arcgolabs/collectionx/list"
 	"github.com/arcgolabs/dix"
 	"github.com/samber/do/v2"
 )
@@ -15,7 +15,7 @@ func Scope(rt *dix.Runtime, name string, packages ...ScopePackage) *do.Scope {
 		return nil
 	}
 
-	wrapped := collectionx.NewListWithCapacity[func(do.Injector)](len(packages))
+	wrapped := collectionlist.NewListWithCapacity[func(do.Injector)](len(packages))
 	for _, pkg := range packages {
 		if pkg == nil {
 			continue

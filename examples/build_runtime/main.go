@@ -5,8 +5,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/arcgolabs/logx"
 	"github.com/arcgolabs/dix"
+	"github.com/arcgolabs/logx"
 )
 
 type greeting struct {

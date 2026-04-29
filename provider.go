@@ -1,12 +1,14 @@
 package dix
 
-import "github.com/arcgolabs/collectionx"
+import (
+	collectionlist "github.com/arcgolabs/collectionx/list"
+)
 
 // ProviderFunc describes a typed provider registration.
 type ProviderFunc struct {
 	register            func(*Container)
 	meta                ProviderMetadata
-	collectionFactories collectionx.List[collectionFactory]
+	collectionFactories *collectionlist.List[collectionFactory]
 }
 
 func (p ProviderFunc) apply(c *Container) {

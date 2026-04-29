@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/arcgolabs/logx"
 	"github.com/arcgolabs/dix"
+	"github.com/arcgolabs/logx"
 )
 
 type appConfig struct {

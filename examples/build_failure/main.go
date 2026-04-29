@@ -4,8 +4,8 @@ package main
 import (
 	"fmt"
 
-	"github.com/arcgolabs/logx"
 	"github.com/arcgolabs/dix"
+	"github.com/arcgolabs/logx"
 )
 
 type missingDependency struct {

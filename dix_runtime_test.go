@@ -7,6 +7,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	collectionlist "github.com/arcgolabs/collectionx/list"
+	"github.com/arcgolabs/dix"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -14,11 +18,6 @@ import (
 	"sync"
 	"testing"
 	"time"
-
-	"github.com/arcgolabs/collectionx"
-	"github.com/arcgolabs/dix"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 type frameworkLoggerCarrier struct {
@@ -672,8 +671,8 @@ func TestUseEventLogger1_RoutesAllDixLogsThroughConfiguredLogger(t *testing.T) {
 	assert.NotEmpty(t, eventLogger.health)
 	assert.NotEmpty(t, eventLogger.transitions)
 
-	messageTexts := collectionx.MapList(
-		collectionx.NewListWithCapacity(len(eventLogger.messages), eventLogger.messages...),
+	messageTexts := collectionlist.MapList(
+		collectionlist.NewListWithCapacity(len(eventLogger.messages), eventLogger.messages...),
 		func(_ int, event dix.MessageEvent) string { return event.Message },
 	).Values()
 	assert.Contains(t, messageTexts, "registering provider")

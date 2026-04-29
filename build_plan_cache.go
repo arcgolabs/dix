@@ -2,10 +2,9 @@ package dix
 
 import (
 	"context"
-	"sync"
-
-	"github.com/arcgolabs/collectionx"
+	collectionlist "github.com/arcgolabs/collectionx/list"
 	"github.com/samber/oops"
+	"sync"
 )
 
 type appPlanCache struct {
@@ -21,7 +20,7 @@ func (a *App) cachedBuildPlan(ctx context.Context) (*buildPlan, ValidationReport
 		err := oops.In("dix").
 			With("op", "cached_build_plan").
 			New("app is nil")
-		return nil, ValidationReport{Errors: collectionx.NewList(err)}, err
+		return nil, ValidationReport{Errors: collectionlist.NewList(err)}, err
 	}
 
 	if !a.buildPlanCacheable() {
@@ -59,7 +58,7 @@ func (a *App) cachedBuildPlan(ctx context.Context) (*buildPlan, ValidationReport
 func computeBuildPlan(ctx context.Context, app *App) (*buildPlan, ValidationReport, error) {
 	plan, err := newUnvalidatedBuildPlan(ctx, app)
 	if err != nil {
-		report := ValidationReport{Errors: collectionx.NewList(err)}
+		report := ValidationReport{Errors: collectionlist.NewList(err)}
 		return nil, report, err
 	}
 

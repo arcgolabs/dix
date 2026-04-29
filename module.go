@@ -1,7 +1,8 @@
 package dix
 
 import (
-	"github.com/arcgolabs/collectionx"
+	collectionlist "github.com/arcgolabs/collectionx/list"
+	collectionset "github.com/arcgolabs/collectionx/set"
 	"github.com/arcgolabs/pkg/option"
 )
 
@@ -12,14 +13,14 @@ type ModuleOption func(*moduleSpec)
 func NewModule(name string, opts ...ModuleOption) Module {
 	spec := &moduleSpec{
 		name:            name,
-		providers:       collectionx.NewList[ProviderFunc](),
-		setups:          collectionx.NewList[SetupFunc](),
-		invokes:         collectionx.NewList[InvokeFunc](),
-		hooks:           collectionx.NewList[HookFunc](),
-		imports:         collectionx.NewList[Module](),
-		profiles:        collectionx.NewSet[Profile](),
-		excludeProfiles: collectionx.NewSet[Profile](),
-		tags:            collectionx.NewOrderedSet[string](),
+		providers:       collectionlist.NewList[ProviderFunc](),
+		setups:          collectionlist.NewList[SetupFunc](),
+		invokes:         collectionlist.NewList[InvokeFunc](),
+		hooks:           collectionlist.NewList[HookFunc](),
+		imports:         collectionlist.NewList[Module](),
+		profiles:        collectionset.NewSet[Profile](),
+		excludeProfiles: collectionset.NewSet[Profile](),
+		tags:            collectionset.NewOrderedSet[string](),
 	}
 	option.Apply(spec, opts...)
 	return Module{spec: spec}
@@ -42,25 +43,25 @@ func (m Module) Description() string {
 }
 
 // Tags returns the module tags.
-func (m Module) Tags() collectionx.OrderedSet[string] {
+func (m Module) Tags() *collectionset.OrderedSet[string] {
 	if m.spec == nil {
-		return collectionx.NewOrderedSet[string]()
+		return collectionset.NewOrderedSet[string]()
 	}
 	return m.spec.tags.Clone()
 }
 
 // Profiles returns the profiles this module is restricted to.
-func (m Module) Profiles() collectionx.Set[Profile] {
+func (m Module) Profiles() *collectionset.Set[Profile] {
 	if m.spec == nil {
-		return collectionx.NewSet[Profile]()
+		return collectionset.NewSet[Profile]()
 	}
 	return m.spec.profiles.Clone()
 }
 
 // ExcludeProfiles returns the profiles this module is excluded from.
-func (m Module) ExcludeProfiles() collectionx.Set[Profile] {
+func (m Module) ExcludeProfiles() *collectionset.Set[Profile] {
 	if m.spec == nil {
-		return collectionx.NewSet[Profile]()
+		return collectionset.NewSet[Profile]()
 	}
 	return m.spec.excludeProfiles.Clone()
 }
@@ -71,9 +72,9 @@ func (m Module) Disabled() bool {
 }
 
 // Imports returns the imported modules.
-func (m Module) Imports() collectionx.List[Module] {
+func (m Module) Imports() *collectionlist.List[Module] {
 	if m.spec == nil {
-		return collectionx.NewList[Module]()
+		return collectionlist.NewList[Module]()
 	}
 	return m.spec.imports.Clone()
 }

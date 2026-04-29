@@ -5,9 +5,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/arcgolabs/logx"
 	"github.com/arcgolabs/dix"
 	dixadvanced "github.com/arcgolabs/dix/advanced"
+	"github.com/arcgolabs/logx"
 	do "github.com/samber/do/v2"
 )
 

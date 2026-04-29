@@ -2,11 +2,10 @@ package dix
 
 import (
 	"context"
-	"log/slog"
-
-	"github.com/arcgolabs/collectionx"
+	collectionlist "github.com/arcgolabs/collectionx/list"
 	"github.com/samber/do/v2"
 	"github.com/samber/oops"
+	"log/slog"
 )
 
 type frameworkConfigDeclarations struct {
@@ -61,7 +60,7 @@ func (p *buildPlan) frameworkConfigDeclarations() frameworkConfigDeclarations {
 		appMeta:      p.declaresProviderOutput(TypedService[AppMeta]()),
 		profile:      p.declaresProviderOutput(TypedService[Profile]()),
 		observer:     p.declaresProviderOutput(TypedService[Observer]()),
-		observerList: p.declaresProviderOutput(TypedService[collectionx.List[Observer]]()),
+		observerList: p.declaresProviderOutput(TypedService[*collectionlist.List[Observer]]()),
 	}
 }
 

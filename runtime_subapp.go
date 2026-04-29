@@ -3,10 +3,9 @@ package dix
 import (
 	"context"
 	"errors"
-	"log/slog"
-
-	"github.com/arcgolabs/collectionx"
+	collectionlist "github.com/arcgolabs/collectionx/list"
 	"github.com/samber/oops"
+	"log/slog"
 )
 
 func newChildRuntime(spec *appSpec, plan *buildPlan, parent *Runtime) (*Runtime, error) {
@@ -63,7 +62,7 @@ func newRuntimeFromParts(
 		logger:      logger,
 		eventLogger: eventLogger,
 		state:       AppStateCreated,
-		subapps:     collectionx.NewList[*Runtime](),
+		subapps:     collectionlist.NewList[*Runtime](),
 	}
 
 	rt.container.logger = rt.logger
@@ -75,9 +74,9 @@ func newRuntimeFromParts(
 }
 
 // SubApps returns built child runtimes in declaration order.
-func (r *Runtime) SubApps() collectionx.List[*Runtime] {
+func (r *Runtime) SubApps() *collectionlist.List[*Runtime] {
 	if r == nil || r.subapps == nil {
-		return collectionx.NewList[*Runtime]()
+		return collectionlist.NewList[*Runtime]()
 	}
 	return r.subapps.Clone()
 }
@@ -169,7 +168,7 @@ func (r *Runtime) stopSubAppsSubset(ctx context.Context, count int) error {
 		count = r.subapps.Len()
 	}
 
-	errs := collectionx.NewList[error]()
+	errs := collectionlist.NewList[error]()
 	for i := count - 1; i >= 0; i-- {
 		subapp, _ := r.subapps.Get(i)
 		if subapp == nil || subapp.State() != AppStateStarted {
@@ -189,7 +188,7 @@ func (r *Runtime) cleanupBuildFailure(ctx context.Context) error {
 		return nil
 	}
 
-	errs := collectionx.NewList[error]()
+	errs := collectionlist.NewList[error]()
 	if err := r.cleanupBuiltSubApps(ctx); err != nil {
 		errs.Add(err)
 	}
@@ -205,7 +204,7 @@ func (r *Runtime) cleanupBuiltSubApps(ctx context.Context) error {
 		return nil
 	}
 
-	errs := collectionx.NewList[error]()
+	errs := collectionlist.NewList[error]()
 	for i := r.subapps.Len() - 1; i >= 0; i-- {
 		subapp, _ := r.subapps.Get(i)
 		if subapp == nil {

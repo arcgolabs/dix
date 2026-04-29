@@ -3,10 +3,9 @@ package dix
 import (
 	"context"
 	"errors"
-	"log/slog"
-
-	"github.com/arcgolabs/collectionx"
+	collectionlist "github.com/arcgolabs/collectionx/list"
 	"github.com/samber/oops"
+	"log/slog"
 )
 
 // StartHook is executed when the application starts.
@@ -48,8 +47,8 @@ func RawHookWithMetadata(fn func(*Container, Lifecycle), meta HookMetadata) Hook
 
 // lifecycleImpl is the internal implementation.
 type lifecycleImpl struct {
-	startHooks  collectionx.List[StartHook]
-	stopHooks   collectionx.List[StopHook]
+	startHooks  *collectionlist.List[StartHook]
+	stopHooks   *collectionlist.List[StopHook]
 	logger      *slog.Logger
 	eventLogger EventLogger
 }
@@ -59,8 +58,8 @@ func newLifecycle(logger *slog.Logger) *lifecycleImpl {
 		logger = defaultLogger()
 	}
 	return &lifecycleImpl{
-		startHooks: collectionx.NewList[StartHook](),
-		stopHooks:  collectionx.NewList[StopHook](),
+		startHooks: collectionlist.NewList[StartHook](),
+		stopHooks:  collectionlist.NewList[StopHook](),
 		logger:     logger,
 	}
 }
@@ -111,7 +110,7 @@ func (l *lifecycleImpl) executeStopHooksSubset(ctx context.Context, count int) e
 	debugEnabled := l.debugEnabled(ctx)
 	l.logDebug(ctx, debugEnabled, "executing stop hooks", "count", count, "registered", registered)
 
-	errs := collectionx.NewListWithCapacity[error](1)
+	errs := collectionlist.NewListWithCapacity[error](1)
 	for i := count - 1; i >= 0; i-- {
 		hook, _ := l.stopHooks.Get(i)
 		l.logDebug(ctx, debugEnabled, "executing stop hook", "index", count-1-i)

@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/arcgolabs/observabilityx"
 	"github.com/arcgolabs/dix"
+	"github.com/arcgolabs/observabilityx"
 )
 
 // Option configures the dix metrics observer.

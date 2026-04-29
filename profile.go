@@ -1,10 +1,9 @@
 package dix
 
 import (
+	collectionlist "github.com/arcgolabs/collectionx/list"
 	"os"
 	"strings"
-
-	"github.com/arcgolabs/collectionx"
 )
 
 // ProfileManager provides utilities for working with application profiles.
@@ -75,21 +74,21 @@ func (pf *ProfileFilter) IsActive(mod Module) bool {
 }
 
 // FilterModules returns only the modules that are active for the current profile.
-func (pf *ProfileFilter) FilterModules(modules collectionx.List[Module]) collectionx.List[Module] {
+func (pf *ProfileFilter) FilterModules(modules *collectionlist.List[Module]) *collectionlist.List[Module] {
 	filtered, err := pf.FilterModulesE(modules)
 	if err != nil {
-		return collectionx.NewList[Module]()
+		return collectionlist.NewList[Module]()
 	}
 	return filtered
 }
 
 // FilterModulesE returns only the modules that are active for the current profile.
-func (pf *ProfileFilter) FilterModulesE(modules collectionx.List[Module]) (collectionx.List[Module], error) {
+func (pf *ProfileFilter) FilterModulesE(modules *collectionlist.List[Module]) (*collectionlist.List[Module], error) {
 	filtered, err := flattenModules(modules, pf.profile)
 	if err != nil {
-		return collectionx.NewList[Module](), err
+		return collectionlist.NewList[Module](), err
 	}
-	return collectionx.MapList(filtered, func(_ int, spec *moduleSpec) Module {
+	return collectionlist.MapList(filtered, func(_ int, spec *moduleSpec) Module {
 		return Module{spec: spec}
 	}), nil
 }

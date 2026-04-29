@@ -2,9 +2,7 @@ package dix
 
 import (
 	"errors"
-	"strings"
-
-	"github.com/arcgolabs/collectionx"
+	collectionlist "github.com/arcgolabs/collectionx/list"
 	"github.com/samber/do/v2"
 )
 
@@ -21,11 +19,11 @@ func (r *StopReport) HasErrors() bool {
 }
 
 // Errors returns stop errors as a collectionx list.
-func (r *StopReport) Errors() collectionx.List[error] {
+func (r *StopReport) Errors() *collectionlist.List[error] {
 	if r == nil {
-		return collectionx.NewList[error]()
+		return collectionlist.NewList[error]()
 	}
-	errs := collectionx.NewListWithCapacity[error](3)
+	errs := collectionlist.NewListWithCapacity[error](3)
 	if r.SubAppError != nil {
 		errs.Add(r.SubAppError)
 	}
@@ -48,9 +46,7 @@ func (r *StopReport) Error() string {
 	if !r.HasErrors() {
 		return ""
 	}
-	errs := r.Errors()
-	lines := collectionx.MapList(errs, func(_ int, err error) string {
+	return r.Errors().Join("\n", func(_ int, err error) string {
 		return err.Error()
 	})
-	return strings.Join(lines.Values(), "\n")
 }

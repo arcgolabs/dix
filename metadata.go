@@ -1,11 +1,10 @@
 package dix
 
 import (
-	"log/slog"
-
-	"github.com/arcgolabs/collectionx"
+	collectionlist "github.com/arcgolabs/collectionx/list"
 	collectionset "github.com/arcgolabs/collectionx/set"
 	"github.com/samber/oops"
+	"log/slog"
 )
 
 func validateTypedGraphReportWithInherited(plan *buildPlan, inherited *collectionset.Set[string]) ValidationReport {
@@ -23,16 +22,16 @@ func validateTypedGraphReportWithInherited(plan *buildPlan, inherited *collectio
 	validateDeclaredDependencies(plan.modules, state)
 
 	return ValidationReport{
-		Errors:   collectionx.NewListWithCapacity(state.err.Len(), state.err.Values()...),
-		Warnings: collectionx.NewListWithCapacity(state.warnings.Len(), state.warnings.Values()...),
+		Errors:   collectionlist.NewListWithCapacity(state.err.Len(), state.err.Values()...),
+		Warnings: collectionlist.NewListWithCapacity(state.warnings.Len(), state.warnings.Values()...),
 	}
 }
 
 type validationState struct {
 	known     *collectionset.Set[string]
 	inherited *collectionset.Set[string]
-	err       collectionx.List[error]
-	warnings  collectionx.List[ValidationWarning]
+	err       *collectionlist.List[error]
+	warnings  *collectionlist.List[ValidationWarning]
 }
 
 func newValidationState(
@@ -55,8 +54,8 @@ func newValidationState(
 	return &validationState{
 		known:     known,
 		inherited: cloneServiceNameSet(inherited),
-		err:       collectionx.NewListWithCapacity[error](4),
-		warnings:  collectionx.NewListWithCapacity[ValidationWarning](2),
+		err:       collectionlist.NewListWithCapacity[error](4),
+		warnings:  collectionlist.NewListWithCapacity[ValidationWarning](2),
 	}
 }
 
@@ -74,12 +73,12 @@ func declaredServiceNames(plan *buildPlan) *collectionset.Set[string] {
 	return state.known
 }
 
-func collectDeclaredOutputs(modules collectionx.List[*moduleSpec], state *validationState) {
+func collectDeclaredOutputs(modules *collectionlist.List[*moduleSpec], state *validationState) {
 	collectExplicitOutputs(modules, state)
 	collectContributionCollectionOutputs(modules, state)
 }
 
-func collectExplicitOutputs(modules collectionx.List[*moduleSpec], state *validationState) {
+func collectExplicitOutputs(modules *collectionlist.List[*moduleSpec], state *validationState) {
 	modules.Range(func(_ int, mod *moduleSpec) bool {
 		if mod == nil {
 			return true
@@ -133,7 +132,7 @@ func collectProviderAliases(moduleName string, meta ProviderMetadata, state *val
 	})
 }
 
-func collectContributionCollectionOutputs(modules collectionx.List[*moduleSpec], state *validationState) {
+func collectContributionCollectionOutputs(modules *collectionlist.List[*moduleSpec], state *validationState) {
 	newContributionPlan(modules).syntheticOutputs().Range(func(_ int, output ServiceRef) bool {
 		if !state.known.Contains(output.Name) {
 			state.known.Add(output.Name)
@@ -167,7 +166,7 @@ func collectSetupOutputs(mod *moduleSpec, state *validationState) {
 	})
 }
 
-func validateDeclaredDependencies(modules collectionx.List[*moduleSpec], state *validationState) {
+func validateDeclaredDependencies(modules *collectionlist.List[*moduleSpec], state *validationState) {
 	modules.Range(func(_ int, mod *moduleSpec) bool {
 		if mod == nil {
 			return true
@@ -253,17 +252,17 @@ func (s *validationState) addWarning(kind ValidationWarningKind, moduleName, lab
 	})
 }
 
-func (s *validationState) validateDeps(moduleName, kind, label string, deps collectionx.List[ServiceRef]) {
+func (s *validationState) validateDeps(moduleName, kind, label string, deps *collectionlist.List[ServiceRef]) {
 	validateDependencies(s.err, s, moduleName, kind, label, deps)
 }
 
 func validateDependencies(
-	err collectionx.List[error],
+	err *collectionlist.List[error],
 	state *validationState,
 	moduleName string,
 	kind string,
 	label string,
-	deps collectionx.List[ServiceRef],
+	deps *collectionlist.List[ServiceRef],
 ) {
 	deps.Range(func(_ int, dep ServiceRef) bool {
 		if !state.canResolve(dep.Name) {

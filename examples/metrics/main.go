@@ -9,9 +9,9 @@ import (
 	"net/http/httptest"
 	"strings"
 
-	promobs "github.com/arcgolabs/observabilityx/prometheus"
 	"github.com/arcgolabs/dix"
 	dixmetrics "github.com/arcgolabs/dix/metrics"
+	promobs "github.com/arcgolabs/observabilityx/prometheus"
 )
 
 func main() {

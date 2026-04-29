@@ -2,14 +2,13 @@ package dix
 
 import (
 	"fmt"
-	"sort"
-	"strings"
-
-	"github.com/arcgolabs/collectionx"
+	collectionlist "github.com/arcgolabs/collectionx/list"
+	collectionmapping "github.com/arcgolabs/collectionx/mapping"
 	"github.com/samber/do/v2"
+	"strings"
 )
 
-func registerCollectionProviders[T any](c *Container, refs collectionx.List[ContributionRef], explicit serviceNameSet) {
+func registerCollectionProviders[T any](c *Container, refs *collectionlist.List[ContributionRef], explicit serviceNameSet) {
 	ordered := orderedContributionRefs(refs)
 	registerContributionListProvider[T](c, ordered, explicit)
 	registerContributionMapProvider[T](c, ordered, explicit)
@@ -19,20 +18,20 @@ func registerCollectionProviders[T any](c *Container, refs collectionx.List[Cont
 
 func registerContributionListProvider[T any](
 	c *Container,
-	refs collectionx.List[ContributionRef],
+	refs *collectionlist.List[ContributionRef],
 	explicit serviceNameSet,
 ) {
-	if explicit.Contains(TypedService[collectionx.List[T]]().Name) {
+	if explicit.Contains(TypedService[*collectionlist.List[T]]().Name) {
 		return
 	}
-	ProvideTErr[collectionx.List[T]](c, func() (collectionx.List[T], error) {
+	ProvideTErr[*collectionlist.List[T]](c, func() (*collectionlist.List[T], error) {
 		return resolveContributionList[T](c.Raw(), refs)
 	})
 }
 
 func registerContributionMapProvider[T any](
 	c *Container,
-	refs collectionx.List[ContributionRef],
+	refs *collectionlist.List[ContributionRef],
 	explicit serviceNameSet,
 ) {
 	if explicit.Contains(TypedService[map[string]T]().Name) {
@@ -49,43 +48,50 @@ func registerContributionMapProvider[T any](
 
 func registerContributionCollectionMapProvider[T any](
 	c *Container,
-	refs collectionx.List[ContributionRef],
+	refs *collectionlist.List[ContributionRef],
 	explicit serviceNameSet,
 ) {
-	if explicit.Contains(TypedService[collectionx.Map[string, T]]().Name) {
+	if explicit.Contains(TypedService[*collectionmapping.Map[string, T]]().Name) {
 		return
 	}
-	ProvideTErr[collectionx.Map[string, T]](c, func() (collectionx.Map[string, T], error) {
+	ProvideTErr[*collectionmapping.Map[string, T]](c, func() (*collectionmapping.Map[string, T], error) {
 		return resolveContributionMap[T](c.Raw(), refs)
 	})
 }
 
 func registerContributionOrderedMapProvider[T any](
 	c *Container,
-	refs collectionx.List[ContributionRef],
+	refs *collectionlist.List[ContributionRef],
 	explicit serviceNameSet,
 ) {
-	if explicit.Contains(TypedService[collectionx.OrderedMap[string, T]]().Name) {
+	if explicit.Contains(TypedService[*collectionmapping.OrderedMap[string, T]]().Name) {
 		return
 	}
-	ProvideTErr[collectionx.OrderedMap[string, T]](c, func() (collectionx.OrderedMap[string, T], error) {
+	ProvideTErr[*collectionmapping.OrderedMap[string, T]](c, func() (*collectionmapping.OrderedMap[string, T], error) {
 		return resolveContributionOrderedMap[T](c.Raw(), refs)
 	})
 }
 
-func orderedContributionRefs(refs collectionx.List[ContributionRef]) collectionx.List[ContributionRef] {
-	ordered := refs.Values()
-	sort.SliceStable(ordered, func(left, right int) bool {
-		if ordered[left].Order != ordered[right].Order {
-			return ordered[left].Order < ordered[right].Order
+func orderedContributionRefs(refs *collectionlist.List[ContributionRef]) *collectionlist.List[ContributionRef] {
+	return refs.Clone().Sort(func(left, right ContributionRef) int {
+		if left.Order != right.Order {
+			if left.Order < right.Order {
+				return -1
+			}
+			return 1
 		}
-		return ordered[left].sequence < ordered[right].sequence
+		if left.sequence < right.sequence {
+			return -1
+		}
+		if left.sequence > right.sequence {
+			return 1
+		}
+		return 0
 	})
-	return collectionx.NewListWithCapacity(len(ordered), ordered...)
 }
 
-func resolveContributionList[T any](injector do.Injector, refs collectionx.List[ContributionRef]) (collectionx.List[T], error) {
-	values := collectionx.NewListWithCapacity[T](refs.Len())
+func resolveContributionList[T any](injector do.Injector, refs *collectionlist.List[ContributionRef]) (*collectionlist.List[T], error) {
+	values := collectionlist.NewListWithCapacity[T](refs.Len())
 	var resolveErr error
 	refs.Range(func(_ int, ref ContributionRef) bool {
 		value, err := do.InvokeNamed[T](injector, ref.Service.Name)
@@ -104,9 +110,9 @@ func resolveContributionList[T any](injector do.Injector, refs collectionx.List[
 
 func resolveContributionMap[T any](
 	injector do.Injector,
-	refs collectionx.List[ContributionRef],
-) (collectionx.Map[string, T], error) {
-	values := collectionx.NewMapWithCapacity[string, T](refs.Len())
+	refs *collectionlist.List[ContributionRef],
+) (*collectionmapping.Map[string, T], error) {
+	values := collectionmapping.NewMapWithCapacity[string, T](refs.Len())
 	var resolveErr error
 	refs.Range(func(_ int, ref ContributionRef) bool {
 		key, err := contributionKey(ref)
@@ -134,9 +140,9 @@ func resolveContributionMap[T any](
 
 func resolveContributionOrderedMap[T any](
 	injector do.Injector,
-	refs collectionx.List[ContributionRef],
-) (collectionx.OrderedMap[string, T], error) {
-	values := collectionx.NewOrderedMapWithCapacity[string, T](refs.Len())
+	refs *collectionlist.List[ContributionRef],
+) (*collectionmapping.OrderedMap[string, T], error) {
+	values := collectionmapping.NewOrderedMapWithCapacity[string, T](refs.Len())
 	var resolveErr error
 	refs.Range(func(_ int, ref ContributionRef) bool {
 		if err := contributionOrderedMapValue(injector, values, ref); err != nil {
@@ -151,7 +157,7 @@ func resolveContributionOrderedMap[T any](
 	return values, nil
 }
 
-func contributionOrderedMapValue[T any](injector do.Injector, values collectionx.OrderedMap[string, T], ref ContributionRef) error {
+func contributionOrderedMapValue[T any](injector do.Injector, values *collectionmapping.OrderedMap[string, T], ref ContributionRef) error {
 	key, err := contributionKey(ref)
 	if err != nil {
 		return err

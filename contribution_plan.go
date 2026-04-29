@@ -2,16 +2,17 @@ package dix
 
 import (
 	"context"
-
-	"github.com/arcgolabs/collectionx"
+	collectionlist "github.com/arcgolabs/collectionx/list"
+	collectionmapping "github.com/arcgolabs/collectionx/mapping"
+	collectionset "github.com/arcgolabs/collectionx/set"
 )
 
 type serviceNameSet struct {
-	values collectionx.Set[string]
+	values *collectionset.Set[string]
 }
 
 func newServiceNameSet(capacity int) serviceNameSet {
-	return serviceNameSet{values: collectionx.NewSetWithCapacity[string](capacity)}
+	return serviceNameSet{values: collectionset.NewSetWithCapacity[string](capacity)}
 }
 
 func (s serviceNameSet) Add(name string) {
@@ -25,17 +26,17 @@ func (s serviceNameSet) Contains(name string) bool {
 }
 
 type contributionPlan struct {
-	contributions collectionx.MultiMap[string, ContributionRef]
-	factories     collectionx.Map[string, collectionFactory]
-	targets       collectionx.List[string]
+	contributions *collectionmapping.MultiMap[string, ContributionRef]
+	factories     *collectionmapping.Map[string, collectionFactory]
+	targets       *collectionlist.List[string]
 	explicit      serviceNameSet
 }
 
-func newContributionPlan(modules collectionx.List[*moduleSpec]) contributionPlan {
+func newContributionPlan(modules *collectionlist.List[*moduleSpec]) contributionPlan {
 	plan := contributionPlan{
-		contributions: collectionx.NewMultiMap[string, ContributionRef](),
-		factories:     collectionx.NewMap[string, collectionFactory](),
-		targets:       collectionx.NewList[string](),
+		contributions: collectionmapping.NewMultiMap[string, ContributionRef](),
+		factories:     collectionmapping.NewMap[string, collectionFactory](),
+		targets:       collectionlist.NewList[string](),
 		explicit:      explicitServiceOutputs(modules),
 	}
 	if modules == nil {
@@ -91,7 +92,7 @@ func (p contributionPlan) collectProviderCollectionFactories(provider ProviderFu
 	})
 }
 
-func explicitServiceOutputs(modules collectionx.List[*moduleSpec]) serviceNameSet {
+func explicitServiceOutputs(modules *collectionlist.List[*moduleSpec]) serviceNameSet {
 	known := newServiceNameSet(64)
 	if modules == nil {
 		return known
@@ -127,7 +128,7 @@ func (p contributionPlan) register(ctx context.Context, rt *Runtime, debugEnable
 			return true
 		}
 		contributionValues := p.contributions.GetCopy(target)
-		contributions := collectionx.NewListWithCapacity(len(contributionValues), contributionValues...)
+		contributions := collectionlist.NewListWithCapacity(len(contributionValues), contributionValues...)
 		if debugEnabled {
 			rt.logMessage(ctx, EventLevelDebug, "registering contribution collection",
 				"target", target,
@@ -139,9 +140,9 @@ func (p contributionPlan) register(ctx context.Context, rt *Runtime, debugEnable
 	})
 }
 
-func (p contributionPlan) syntheticOutputs() collectionx.List[ServiceRef] {
+func (p contributionPlan) syntheticOutputs() *collectionlist.List[ServiceRef] {
 	outputs := newServiceNameSet(16)
-	refs := collectionx.NewList[ServiceRef]()
+	refs := collectionlist.NewList[ServiceRef]()
 	p.targets.Range(func(_ int, target string) bool {
 		factory, found := p.factories.Get(target)
 		if !found {

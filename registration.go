@@ -1,7 +1,7 @@
 package dix
 
 import (
-	"github.com/arcgolabs/collectionx"
+	collectionlist "github.com/arcgolabs/collectionx/list"
 )
 
 // ServiceRef identifies a service in the container graph.
@@ -24,9 +24,9 @@ func NamedService(name string) ServiceRef {
 type ProviderMetadata struct {
 	Label         string
 	Output        ServiceRef
-	Dependencies  collectionx.List[ServiceRef]
-	Aliases       collectionx.List[ServiceRef]
-	Contributions collectionx.List[ContributionRef]
+	Dependencies  *collectionlist.List[ServiceRef]
+	Aliases       *collectionlist.List[ServiceRef]
+	Contributions *collectionlist.List[ContributionRef]
 	Raw           bool
 }
 
@@ -44,7 +44,7 @@ type ContributionRef struct {
 // InvokeMetadata describes an invoke registration for validation and inspection.
 type InvokeMetadata struct {
 	Label        string
-	Dependencies collectionx.List[ServiceRef]
+	Dependencies *collectionlist.List[ServiceRef]
 	Raw          bool
 }
 
@@ -62,26 +62,26 @@ const (
 type HookMetadata struct {
 	Label        string
 	Kind         HookKind
-	Dependencies collectionx.List[ServiceRef]
+	Dependencies *collectionlist.List[ServiceRef]
 	Raw          bool
 }
 
 // SetupMetadata describes a setup registration.
 type SetupMetadata struct {
 	Label         string
-	Dependencies  collectionx.List[ServiceRef]
-	Provides      collectionx.List[ServiceRef]
-	Overrides     collectionx.List[ServiceRef]
+	Dependencies  *collectionlist.List[ServiceRef]
+	Provides      *collectionlist.List[ServiceRef]
+	Overrides     *collectionlist.List[ServiceRef]
 	GraphMutation bool
 	Raw           bool
 }
 
 // ServiceRefs constructs a filtered collectionx list of service references.
-func ServiceRefs(refs ...ServiceRef) collectionx.List[ServiceRef] {
+func ServiceRefs(refs ...ServiceRef) *collectionlist.List[ServiceRef] {
 	if len(refs) == 0 {
-		return collectionx.NewList[ServiceRef]()
+		return collectionlist.NewList[ServiceRef]()
 	}
-	filtered := collectionx.NewListWithCapacity[ServiceRef](len(refs))
+	filtered := collectionlist.NewListWithCapacity[ServiceRef](len(refs))
 	for _, ref := range refs {
 		if ref.Name != "" {
 			filtered.Add(ref)
@@ -101,7 +101,7 @@ func NewProviderFunc(register func(*Container), meta ProviderMetadata) ProviderF
 func NewProviderFuncWithCollections(
 	register func(*Container),
 	meta ProviderMetadata,
-	collections collectionx.List[collectionFactory],
+	collections *collectionlist.List[collectionFactory],
 ) ProviderFunc {
 	return ProviderFunc{
 		register:            register,
@@ -170,18 +170,18 @@ func normalizeSetupMetadata(meta SetupMetadata) SetupMetadata {
 	return meta
 }
 
-func normalizeServiceRefs(refs collectionx.List[ServiceRef]) collectionx.List[ServiceRef] {
+func normalizeServiceRefs(refs *collectionlist.List[ServiceRef]) *collectionlist.List[ServiceRef] {
 	if refs == nil || refs.Len() == 0 {
-		return collectionx.NewList[ServiceRef]()
+		return collectionlist.NewList[ServiceRef]()
 	}
 	return ServiceRefs(refs.Values()...)
 }
 
-func normalizeContributionRefs(refs collectionx.List[ContributionRef]) collectionx.List[ContributionRef] {
+func normalizeContributionRefs(refs *collectionlist.List[ContributionRef]) *collectionlist.List[ContributionRef] {
 	if refs == nil || refs.Len() == 0 {
-		return collectionx.NewList[ContributionRef]()
+		return collectionlist.NewList[ContributionRef]()
 	}
-	filtered := collectionx.NewListWithCapacity[ContributionRef](refs.Len())
+	filtered := collectionlist.NewListWithCapacity[ContributionRef](refs.Len())
 	refs.Range(func(_ int, ref ContributionRef) bool {
 		if ref.Target.Name != "" && ref.Service.Name != "" {
 			filtered.Add(ref)

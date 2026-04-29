@@ -1,12 +1,12 @@
 package dix_test
 
 import (
-	"testing"
-
-	"github.com/arcgolabs/collectionx"
+	collectionlist "github.com/arcgolabs/collectionx/list"
+	collectionmapping "github.com/arcgolabs/collectionx/mapping"
 	"github.com/arcgolabs/dix"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"testing"
 )
 
 type contributionEndpoint interface {
@@ -36,8 +36,8 @@ func TestProviderIntoInjectsCollectionxListByRole(t *testing.T) {
 					dix.Provider0(func() *betaContributionEndpoint {
 						return &betaContributionEndpoint{}
 					}, dix.Into[contributionEndpoint](dix.Order(10))),
-					dix.Provider1(func(endpoints collectionx.List[contributionEndpoint]) *contributionServer {
-						names := collectionx.MapList(endpoints, func(_ int, endpoint contributionEndpoint) string {
+					dix.Provider1(func(endpoints *collectionlist.List[contributionEndpoint]) *contributionServer {
+						names := collectionlist.MapList(endpoints, func(_ int, endpoint contributionEndpoint) string {
 							return endpoint.Name()
 						})
 						return &contributionServer{names: names.Values()}
@@ -66,8 +66,8 @@ func TestContributeInjectsCollectionxList(t *testing.T) {
 					dix.Contribute0[contributionEndpoint](func() contributionEndpoint {
 						return &betaContributionEndpoint{}
 					}),
-					dix.Provider1(func(endpoints collectionx.List[contributionEndpoint]) *contributionServer {
-						names := collectionx.MapList(endpoints, func(_ int, endpoint contributionEndpoint) string {
+					dix.Provider1(func(endpoints *collectionlist.List[contributionEndpoint]) *contributionServer {
+						names := collectionlist.MapList(endpoints, func(_ int, endpoint contributionEndpoint) string {
 							return endpoint.Name()
 						})
 						return &contributionServer{names: names.Values()}
@@ -96,8 +96,8 @@ func TestContributeInjectsOrderedMapByKey(t *testing.T) {
 					dix.Contribute0[contributionEndpoint](func() contributionEndpoint {
 						return &betaContributionEndpoint{}
 					}, dix.Key("beta")),
-					dix.Provider1(func(endpoints collectionx.OrderedMap[string, contributionEndpoint]) *contributionServer {
-						names := collectionx.NewListWithCapacity[string](endpoints.Len())
+					dix.Provider1(func(endpoints *collectionmapping.OrderedMap[string, contributionEndpoint]) *contributionServer {
+						names := collectionlist.NewListWithCapacity[string](endpoints.Len())
 						endpoints.Range(func(key string, endpoint contributionEndpoint) bool {
 							names.Add(key + ":" + endpoint.Name())
 							return true

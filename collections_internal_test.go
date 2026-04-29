@@ -2,11 +2,10 @@ package dix
 
 import (
 	"context"
-	"testing"
-
-	"github.com/arcgolabs/collectionx"
+	collectionlist "github.com/arcgolabs/collectionx/list"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"testing"
 )
 
 func TestNewModule_StoresCollectionBackedSpec(t *testing.T) {
@@ -125,7 +124,7 @@ func TestContainerHealthChecks_UsesCollectionList(t *testing.T) {
 func TestLifecycle_UsesCollectionBackedHooks(t *testing.T) {
 	logger := defaultLogger()
 	lc := newLifecycle(logger)
-	order := collectionx.NewListWithCapacity[string](4)
+	order := collectionlist.NewListWithCapacity[string](4)
 
 	lc.OnStart(func(context.Context) error {
 		order.Add("start-1")
@@ -156,7 +155,7 @@ func TestFlattenModules_VisitorOrderIsDependencyFirst(t *testing.T) {
 	left := NewModule("left", WithModuleImports(shared))
 	root := NewModule("root", WithModuleImports(left))
 
-	modules, err := flattenModules(collectionx.NewList(root), ProfileDefault)
+	modules, err := flattenModules(collectionlist.NewList(root), ProfileDefault)
 	require.NoError(t, err)
 	require.Len(t, modules.Values(), 3)
 	assert.Equal(t, []string{"shared", "left", "root"}, []string{
@@ -173,7 +172,7 @@ func TestWalkModules_DetectsImportCycle(t *testing.T) {
 	left.imports.Add(Module{spec: right})
 	right.imports.Add(Module{spec: left})
 
-	err := walkModules(collectionx.NewList(Module{spec: left}), ProfileDefault, moduleVisitorFuncs{})
+	err := walkModules(collectionlist.NewList(Module{spec: left}), ProfileDefault, moduleVisitorFuncs{})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "module import cycle detected")
 	assert.Contains(t, err.Error(), "left")
@@ -188,10 +187,10 @@ func TestProfileFilter_FilterModulesEReturnsFlattenErrors(t *testing.T) {
 	right.imports.Add(Module{spec: left})
 
 	filter := NewProfileFilter(ProfileDefault)
-	filtered, err := filter.FilterModulesE(collectionx.NewList(Module{spec: left}))
+	filtered, err := filter.FilterModulesE(collectionlist.NewList(Module{spec: left}))
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "module import cycle detected")
 	assert.True(t, filtered.IsEmpty())
-	assert.True(t, filter.FilterModules(collectionx.NewList(Module{spec: left})).IsEmpty())
+	assert.True(t, filter.FilterModules(collectionlist.NewList(Module{spec: left})).IsEmpty())
 }

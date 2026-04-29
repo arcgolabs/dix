@@ -3,9 +3,8 @@ package dix
 import (
 	"context"
 	"fmt"
+	collectionlist "github.com/arcgolabs/collectionx/list"
 	"log/slog"
-
-	"github.com/arcgolabs/collectionx"
 )
 
 // Event is an internal dix framework event emitted to EventLogger implementations.
@@ -37,7 +36,7 @@ type EventField struct {
 type MessageEvent struct {
 	Level   EventLevel
 	Message string
-	Fields  collectionx.List[EventField]
+	Fields  *collectionlist.List[EventField]
 }
 
 // EventLogger receives all internal dix logging events.
@@ -194,12 +193,12 @@ func logMessageEvent(ctx context.Context, logger EventLogger, level EventLevel, 
 	})
 }
 
-func eventFields(args ...any) collectionx.List[EventField] {
+func eventFields(args ...any) *collectionlist.List[EventField] {
 	if len(args) == 0 {
-		return collectionx.NewList[EventField]()
+		return collectionlist.NewList[EventField]()
 	}
 
-	fields := collectionx.NewListWithCapacity[EventField]((len(args) + 1) / 2)
+	fields := collectionlist.NewListWithCapacity[EventField]((len(args) + 1) / 2)
 	for i := 0; i < len(args); i += 2 {
 		key := fmt.Sprintf("arg_%d", i)
 		if name, ok := args[i].(string); ok && name != "" {
@@ -216,11 +215,11 @@ func eventFields(args ...any) collectionx.List[EventField] {
 	return fields
 }
 
-func eventFieldArgs(fields collectionx.List[EventField]) []any {
+func eventFieldArgs(fields *collectionlist.List[EventField]) []any {
 	if fields == nil || fields.Len() == 0 {
 		return nil
 	}
-	return collectionx.FlatMapList(fields, func(_ int, field EventField) []any {
+	return collectionlist.FlatMapList(fields, func(_ int, field EventField) []any {
 		return []any{field.Key, field.Value}
 	}).Values()
 }

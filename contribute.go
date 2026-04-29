@@ -1,7 +1,7 @@
 package dix
 
 import (
-	"github.com/arcgolabs/collectionx"
+	collectionlist "github.com/arcgolabs/collectionx/list"
 	"github.com/samber/do/v2"
 )
 
@@ -106,7 +106,7 @@ func ContributeErr3[T, D1, D2, D3 any](fn func(D1, D2, D3) (T, error), opts ...C
 func newContributionProviderFunc[T any](
 	label string,
 	register func(*Container, string),
-	deps collectionx.List[ServiceRef],
+	deps *collectionlist.List[ServiceRef],
 	opts ...ContributionOption,
 ) ProviderFunc {
 	target := TypedService[T]()
@@ -127,7 +127,7 @@ func newContributionProviderFunc[T any](
 	factory := collectionFactory{
 		target:  target,
 		outputs: collectionServiceRefs[T](),
-		register: func(c *Container, contributions collectionx.List[ContributionRef], explicit serviceNameSet) {
+		register: func(c *Container, contributions *collectionlist.List[ContributionRef], explicit serviceNameSet) {
 			registerCollectionProviders[T](c, contributions, explicit)
 		},
 	}
@@ -140,8 +140,8 @@ func newContributionProviderFunc[T any](
 			Label:         label,
 			Output:        NamedService(service),
 			Dependencies:  deps,
-			Contributions: collectionx.NewList(ref),
+			Contributions: collectionlist.NewList(ref),
 		},
-		collectionx.NewList(factory),
+		collectionlist.NewList(factory),
 	)
 }

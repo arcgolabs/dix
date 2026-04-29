@@ -4,13 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	collectionlist "github.com/arcgolabs/collectionx/list"
+	collectionmapping "github.com/arcgolabs/collectionx/mapping"
+	"github.com/samber/oops"
 	"net/http"
-	"sort"
 	"strings"
 	"time"
-
-	"github.com/arcgolabs/collectionx"
-	"github.com/samber/oops"
 )
 
 // HealthKind is the category of a health check.
@@ -62,8 +61,8 @@ func (c *Container) RegisterHealthCheckOfKind(kind HealthKind, name string, fn H
 
 // HealthReport describes the current health status.
 type HealthReport struct {
-	Kind   HealthKind                     `json:"kind"`
-	Checks collectionx.Map[string, error] `json:"-"`
+	Kind   HealthKind                            `json:"kind"`
+	Checks *collectionmapping.Map[string, error] `json:"-"`
 }
 
 // Healthy reports whether all checks passed.
@@ -80,7 +79,7 @@ func (r HealthReport) Error() error {
 		return nil
 	}
 
-	parts := collectionx.NewList[string]()
+	parts := collectionlist.NewList[string]()
 	if r.Checks != nil {
 		r.Checks.Range(func(name string, err error) bool {
 			if err != nil {
@@ -89,11 +88,10 @@ func (r HealthReport) Error() error {
 			return true
 		})
 	}
-	items := parts.Values()
-	sort.Strings(items)
+	parts.Sort(strings.Compare)
 	return oops.In("dix").
-		With("op", "health_report", "kind", r.Kind, "failed_checks", len(items)).
-		Errorf("health check failed: %s", strings.Join(items, "; "))
+		With("op", "health_report", "kind", r.Kind, "failed_checks", parts.Len()).
+		Errorf("health check failed: %s", parts.Join("; "))
 }
 
 // MarshalJSON renders a user-friendly JSON payload for HTTP endpoints.
@@ -108,7 +106,7 @@ func (r HealthReport) MarshalJSON() ([]byte, error) {
 	if r.Checks != nil {
 		checksLen = r.Checks.Len()
 	}
-	checks := collectionx.NewMapWithCapacity[string, *string](checksLen)
+	checks := collectionmapping.NewMapWithCapacity[string, *string](checksLen)
 	if r.Checks != nil {
 		r.Checks.Range(func(name string, err error) bool {
 			if err == nil {
@@ -146,12 +144,12 @@ func (r *Runtime) CheckReadiness(ctx context.Context) HealthReport {
 }
 
 func (r *Runtime) checkHealthByKind(ctx context.Context, kind HealthKind) HealthReport {
-	report := HealthReport{Kind: kind, Checks: collectionx.NewMap[string, error]()}
+	report := HealthReport{Kind: kind, Checks: collectionmapping.NewMap[string, error]()}
 	if r == nil || r.container == nil {
 		return report
 	}
 
-	reportChecks := collectionx.NewMapWithCapacity[string, error](r.container.healthChecks.Len())
+	reportChecks := collectionmapping.NewMapWithCapacity[string, error](r.container.healthChecks.Len())
 	r.container.healthChecks.Range(func(_ int, check healthCheckEntry) bool {
 		if check.kind != kind {
 			return true
