@@ -143,6 +143,23 @@ app := dix.NewDefault(
 
 This keeps logger lifecycle in modules while replacing the framework default logger before build logging starts.
 
+## Runtime lifecycle summaries
+
+After `Build()` or `Start()`, a runtime can report its bound lifecycle hooks and built subapps without exposing internal fields:
+
+```go
+summary := rt.LifecycleSummary()
+fmt.Println("start hooks:", summary.StartHooks)
+fmt.Println("stop hooks:", summary.StopHooks)
+
+subapps := rt.SubAppSummaries()
+for _, subapp := range subapps.Values() {
+	fmt.Println("subapp:", subapp.Name, "parent:", subapp.ParentName, "state:", subapp.State)
+}
+```
+
+For nested apps, `rt.ScopePath()` returns app names from root to the current runtime. `rt.IsSubApp()` and `rt.ParentName()` are useful when lifecycle code needs to log whether it is running in a child app.
+
 ## Related
 
 - [Getting Started](./getting-started)

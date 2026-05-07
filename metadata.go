@@ -266,9 +266,10 @@ func validateDependencies(
 ) {
 	deps.Range(func(_ int, dep ServiceRef) bool {
 		if !state.canResolve(dep.Name) {
+			hint := state.missingDependencyHint(dep.Name)
 			err.Add(oops.In("dix").
 				With("op", "validate_dependency", "module", moduleName, "label", label, "dependency", dep.Name, "kind", kind).
-				Errorf("missing dependency `%s` for %s %s in module `%s`", dep.Name, kind, label, moduleName))
+				Errorf("missing dependency `%s` for %s %s in module `%s`%s", dep.Name, kind, label, moduleName, hint))
 		}
 		return true
 	})

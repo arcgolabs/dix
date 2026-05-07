@@ -3,6 +3,7 @@ module github.com/arcgolabs/dix
 go 1.26.2
 
 require (
+	github.com/arcgolabs/collectionx/graph v0.7.0
 	github.com/arcgolabs/collectionx/list v0.7.0
 	github.com/arcgolabs/collectionx/mapping v0.7.0
 	github.com/arcgolabs/collectionx/set v0.7.0
@@ -15,7 +16,6 @@ require (
 )
 
 require (
-	github.com/arcgolabs/collectionx/internal v0.6.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/oklog/ulid/v2 v2.1.1 // indirect

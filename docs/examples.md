@@ -217,13 +217,53 @@ Use these shortcuts when the registration has no dependencies and the longer exp
 ```go
 provided := advanced.ListProvidedServices(rt)
 deps := advanced.ExplainNamedDependencies(rt, "tenant.default")
+inspection := advanced.InspectRuntime(rt, "tenant.default")
 
-fmt.Println("provided services:", len(provided))
-fmt.Println("tenant graph known:", deps["tenant.default"] != "")
+_, tenantKnown := deps.Get("tenant.default")
+fmt.Println("provided services:", provided.Len())
+fmt.Println("tenant graph known:", tenantKnown)
+fmt.Println("static graph nodes:", inspection.DependencyGraph.Nodes.Len())
+fmt.Println("start hooks:", inspection.Lifecycle.StartHooks)
+fmt.Println("subapps:", inspection.SubApps.Len())
 ```
 
 Use the fine-grained inspection helpers when you only need one diagnostic view.
-`InspectRuntime(...)` remains convenient, but it is the heavier aggregation path.
+`InspectRuntime(...)` remains convenient, but it is the heavier aggregation path. It now includes the live `do` scope tree, static dix dependency graph, lifecycle summary, and subapp summaries.
+
+## Example: Static Dependency Graph
+
+```go
+explanation, err := app.Explain()
+if err != nil {
+	panic(err)
+}
+
+fmt.Println(explanation.String())
+fmt.Println(explanation.Graph.DOT())
+
+order, err := explanation.Graph.TopologicalOrder()
+if err != nil {
+	panic(err)
+}
+fmt.Println("dependency-first nodes:", order.Len())
+```
+
+Use `app.DependencyGraph()` when you only need the graph. The graph uses `collectionx/graph` internally and exposes a cloned directed graph through `DependencyGraph.Directed()` for custom traversal.
+
+## Example: Test Helpers
+
+```go
+func TestApp(t *testing.T) {
+	app := dix.New("test", dix.Modules(module))
+
+	testx.Validate(t, app)
+	rt := testx.Start(context.Background(), t, app)
+
+	require.Equal(t, dix.AppStateStarted, rt.State())
+}
+```
+
+`dix/testx` keeps common validation, build, start, and cleanup checks out of individual tests.
 
 For caller-controlled shutdown, the app-level shortcut is:
 

@@ -209,6 +209,69 @@ app := dix.New(
 - For typed-only apps, `app.Validate()` is usually enough.
 - When you use raw bridge APIs, prefer `app.ValidateReport()` so you can inspect warnings as well as hard errors.
 - If a raw path is intentional, declare its validation boundary with metadata-aware APIs instead of relying on a fully opaque escape hatch.
+- Missing dependency errors include nearby available service names, which is useful when a split module renamed a provider or moved it behind a subapp boundary.
+
+## Optional: inspect the static dependency graph
+
+`dix` can explain the static build plan before the app is started. This is separate from the live `do` scope tree: it is based on module metadata, provider outputs, dependencies, aliases, contributions, lifecycle hooks, and subapps.
+
+```go
+explanation, err := app.Explain()
+if err != nil {
+	panic(err)
+}
+
+fmt.Println(explanation.String())
+fmt.Println(explanation.Graph.DOT())
+
+order, err := explanation.Graph.TopologicalOrder()
+if err != nil {
+	panic(err)
+}
+fmt.Println("dependency-first nodes:", order.Len())
+```
+
+Use `app.DependencyGraph()` when you only need the graph. `DependencyGraph.Directed()` returns a clone of the underlying `collectionx/graph` directed graph for custom traversal.
+
+## Optional: compose subapps
+
+Use `SubApps(...)` when a child app should share parent services but keep an isolated child `do` scope and its own lifecycle hooks.
+
+```go
+worker := dix.NewSubApp("worker",
+	dix.Modules(workerModule),
+)
+
+app := dix.New("demo",
+	dix.Modules(configModule, logModule),
+	dix.SubApps(worker),
+)
+
+rt, err := app.Build()
+if err != nil {
+	panic(err)
+}
+
+workerRuntime, found := rt.SubApp("worker")
+fmt.Println(found, workerRuntime.ScopePath().Join(" / "))
+```
+
+At runtime, `rt.SubAppSummaries()`, `rt.LifecycleSummary()`, `rt.IsSubApp()`, and `rt.ParentName()` expose the child app relationship without reaching into `do` internals.
+
+## Optional: test helpers
+
+`dix/testx` contains small helpers for package tests. They fail `testing.TB` immediately on validation, build, start, or cleanup errors.
+
+```go
+func TestApp(t *testing.T) {
+	app := dix.New("test", dix.Modules(module))
+
+	testx.Validate(t, app)
+	rt := testx.Start(context.Background(), t, app)
+
+	require.Equal(t, dix.AppStateStarted, rt.State())
+}
+```
 
 ## Optional: run with caller-owned context
 

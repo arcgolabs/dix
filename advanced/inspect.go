@@ -13,6 +13,9 @@ type Inspection struct {
 	ProvidedServices  *collectionlist.List[do.ServiceDescription]
 	InvokedServices   *collectionlist.List[do.ServiceDescription]
 	NamedDependencies *collectionmapping.Map[string, string]
+	DependencyGraph   dix.DependencyGraph
+	Lifecycle         dix.LifecycleSummary
+	SubApps           *collectionlist.List[dix.SubAppSummary]
 }
 
 // InspectOptions controls which inspection sections are populated.
@@ -21,6 +24,9 @@ type InspectOptions struct {
 	IncludeProvidedServices bool
 	IncludeInvokedServices  bool
 	IncludeNamedDeps        bool
+	IncludeDependencyGraph  bool
+	IncludeLifecycle        bool
+	IncludeSubApps          bool
 }
 
 // DefaultInspectOptions returns the default inspection option set.
@@ -30,6 +36,9 @@ func DefaultInspectOptions() InspectOptions {
 		IncludeProvidedServices: true,
 		IncludeInvokedServices:  true,
 		IncludeNamedDeps:        true,
+		IncludeDependencyGraph:  true,
+		IncludeLifecycle:        true,
+		IncludeSubApps:          true,
 	}
 }
 
@@ -110,10 +119,28 @@ func InspectRuntimeWithOptions(rt *dix.Runtime, opts InspectOptions, namedServic
 		namedDependencies = ExplainNamedDependencies(rt, namedServices...)
 	}
 
+	var dependencyGraph dix.DependencyGraph
+	if opts.IncludeDependencyGraph {
+		dependencyGraph, _ = rt.DependencyGraph()
+	}
+
+	var lifecycle dix.LifecycleSummary
+	if opts.IncludeLifecycle {
+		lifecycle = rt.LifecycleSummary()
+	}
+
+	var subapps *collectionlist.List[dix.SubAppSummary]
+	if opts.IncludeSubApps {
+		subapps = rt.SubAppSummaries()
+	}
+
 	return Inspection{
 		ScopeTree:         scopeTree,
 		ProvidedServices:  provided,
 		InvokedServices:   invoked,
 		NamedDependencies: namedDependencies,
+		DependencyGraph:   dependencyGraph,
+		Lifecycle:         lifecycle,
+		SubApps:           subapps,
 	}
 }
