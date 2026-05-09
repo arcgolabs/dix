@@ -60,14 +60,14 @@ func TestRuntimeScopeSupportsNamedProviders(t *testing.T) {
 	rt := buildRuntime(t, dix.NewDefault())
 
 	scope, err := rt.Scope("named", dix.ScopeFunc(func(c *dix.Container) {
-		dix.ProvideNamed1T(c, "greeting", func(root string) string {
+		dix.ProvideKey1(c, dix.NamedService[string]("greeting"), func(root string) string {
 			return root + "-scoped"
 		})
 		dix.ProvideValueT(c, "root")
 	}))
 	require.NoError(t, err)
 
-	value, err := dix.ResolveNamedAs[string](scope, "greeting")
+	value, err := dix.ResolveKey(scope, dix.NamedService[string]("greeting"))
 	require.NoError(t, err)
 	assert.Equal(t, "root-scoped", value)
 }

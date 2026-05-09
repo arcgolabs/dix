@@ -25,7 +25,7 @@ Go does not support overloading by return type. That means `Provider0(func() T)`
 ## Scoped and override APIs
 
 - `rt.Scope(...)`
-- `dix.ProvideNamedTErr(...)`
+- `dix.ProvideKeyErr(...)`
 - `dixadvanced.OverrideErr0..1`
 - `dixadvanced.NamedOverrideErr0..1`
 - `dixadvanced.OverrideTransientErr0..1`
@@ -49,7 +49,7 @@ app := dix.NewApp("app",
 
 ```go
 scope, err := rt.Scope("request-42", dix.ScopeFunc(func(c *dix.Container) {
-    dix.ProvideNamedTErr(c, "tenant.default", func() (string, error) {
+    dix.ProvideKeyErr(c, dix.NamedService[string]("tenant.default"), func() (string, error) {
         return resolveTenantFromRequest()
     })
 }))

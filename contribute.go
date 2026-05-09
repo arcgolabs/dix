@@ -119,7 +119,7 @@ func newContributionProviderFunc[T any](
 	service := anonymousContributionServiceName(target.Name)
 	ref := ContributionRef{
 		Target:  target,
-		Service: NamedService(service),
+		Service: NamedService[T](service).Ref(),
 		Key:     contributionOpts.key,
 		HasKey:  contributionOpts.hasKey,
 		Order:   contributionOpts.order,
@@ -138,7 +138,7 @@ func newContributionProviderFunc[T any](
 		},
 		ProviderMetadata{
 			Label:         label,
-			Output:        NamedService(service),
+			Output:        NamedService[T](service).Ref(),
 			Dependencies:  deps,
 			Contributions: collectionlist.NewList(ref),
 		},

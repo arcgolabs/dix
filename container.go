@@ -139,7 +139,7 @@ func ProvideT[T any](c *Container, fn func() T) {
 // ProvideTErr registers a typed singleton provider with no dependencies.
 func ProvideTErr[T any](c *Container, fn func() (T, error)) {
 	name := serviceNameOfWith[T](c.serviceNames)
-	provideNamedTimed(c, name, func(_ do.Injector) (T, error) { return fn() })
+	provideServiceTimed(c, name, func(_ do.Injector) (T, error) { return fn() })
 }
 
 // Provide1T registers a typed singleton provider with one dependency.
@@ -150,7 +150,7 @@ func Provide1T[T, D1 any](c *Container, fn func(D1) T) {
 // Provide1TErr registers a typed singleton provider with one dependency.
 func Provide1TErr[T, D1 any](c *Container, fn func(D1) (T, error)) {
 	name := serviceNameOfWith[T](c.serviceNames)
-	provideNamedTimed(c, name, func(i do.Injector) (T, error) {
+	provideServiceTimed(c, name, func(i do.Injector) (T, error) {
 		d1, err := resolveDependency1[D1](i)
 		if err != nil {
 			var zero T
@@ -168,7 +168,7 @@ func Provide2T[T, D1, D2 any](c *Container, fn func(D1, D2) T) {
 // Provide2TErr registers a typed singleton provider with two dependencies.
 func Provide2TErr[T, D1, D2 any](c *Container, fn func(D1, D2) (T, error)) {
 	name := serviceNameOfWith[T](c.serviceNames)
-	provideNamedTimed(c, name, func(i do.Injector) (T, error) {
+	provideServiceTimed(c, name, func(i do.Injector) (T, error) {
 		d1, d2, err := resolveDependencies2[D1, D2](i)
 		if err != nil {
 			var zero T
@@ -186,7 +186,7 @@ func Provide3T[T, D1, D2, D3 any](c *Container, fn func(D1, D2, D3) T) {
 // Provide3TErr registers a typed singleton provider with three dependencies.
 func Provide3TErr[T, D1, D2, D3 any](c *Container, fn func(D1, D2, D3) (T, error)) {
 	name := serviceNameOfWith[T](c.serviceNames)
-	provideNamedTimed(c, name, func(i do.Injector) (T, error) {
+	provideServiceTimed(c, name, func(i do.Injector) (T, error) {
 		d1, d2, d3, err := resolveDependencies3[D1, D2, D3](i)
 		if err != nil {
 			var zero T
@@ -204,7 +204,7 @@ func Provide4T[T, D1, D2, D3, D4 any](c *Container, fn func(D1, D2, D3, D4) T) {
 // Provide4TErr registers a typed singleton provider with four dependencies.
 func Provide4TErr[T, D1, D2, D3, D4 any](c *Container, fn func(D1, D2, D3, D4) (T, error)) {
 	name := serviceNameOfWith[T](c.serviceNames)
-	provideNamedTimed(c, name, func(i do.Injector) (T, error) {
+	provideServiceTimed(c, name, func(i do.Injector) (T, error) {
 		d1, d2, d3, d4, err := resolveDependencies4[D1, D2, D3, D4](i)
 		if err != nil {
 			var zero T
@@ -224,7 +224,7 @@ func Provide5T[T, D1, D2, D3, D4, D5 any](c *Container, fn func(D1, D2, D3, D4, 
 // Provide5TErr registers a typed singleton provider with five dependencies.
 func Provide5TErr[T, D1, D2, D3, D4, D5 any](c *Container, fn func(D1, D2, D3, D4, D5) (T, error)) {
 	name := serviceNameOfWith[T](c.serviceNames)
-	provideNamedTimed(c, name, func(i do.Injector) (T, error) {
+	provideServiceTimed(c, name, func(i do.Injector) (T, error) {
 		deps, err := resolveDependencies5[D1, D2, D3, D4, D5](i)
 		if err != nil {
 			var zero T
@@ -244,7 +244,7 @@ func Provide6T[T, D1, D2, D3, D4, D5, D6 any](c *Container, fn func(D1, D2, D3, 
 // Provide6TErr registers a typed singleton provider with six dependencies.
 func Provide6TErr[T, D1, D2, D3, D4, D5, D6 any](c *Container, fn func(D1, D2, D3, D4, D5, D6) (T, error)) {
 	name := serviceNameOfWith[T](c.serviceNames)
-	provideNamedTimed(c, name, func(i do.Injector) (T, error) {
+	provideServiceTimed(c, name, func(i do.Injector) (T, error) {
 		deps, err := resolveDependencies6[D1, D2, D3, D4, D5, D6](i)
 		if err != nil {
 			var zero T
@@ -259,7 +259,7 @@ func ProvideValueT[T any](c *Container, value T) {
 	do.ProvideNamedValue(c.injector, serviceNameOfWith[T](c.serviceNames), value)
 }
 
-func provideNamedTimed[T any](c *Container, name string, fn func(do.Injector) (T, error)) {
+func provideServiceTimed[T any](c *Container, name string, fn func(do.Injector) (T, error)) {
 	do.ProvideNamed(c.injector, name, func(i do.Injector) (T, error) {
 		startedAt := time.Now()
 		value, err := fn(i)

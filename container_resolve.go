@@ -21,17 +21,41 @@ func ResolveAs[T any](c *Container) (T, error) {
 	return resolveContainerAs[T](c)
 }
 
-// ResolveNamedAs resolves a named value from the container.
-func ResolveNamedAs[T any](c *Container, name string) (T, error) {
+// ResolveKey resolves a typed service key from the container.
+func ResolveKey[T any](c *Container, key ServiceKey[T]) (T, error) {
+	name := serviceKeyName(c, key)
 	if c == nil || c.injector == nil {
 		var zero T
 		return zero, oops.In("dix").
-			With("op", "resolve_named", "name", name).
+			With("op", "resolve_key", "service", name).
 			New("container is nil")
 	}
 	startedAt := time.Now()
 	value, err := do.InvokeNamed[T](c.injector, name)
-	c.logServiceResolution(context.Background(), name, "resolve_named", time.Since(startedAt), err)
+	c.logServiceResolution(context.Background(), name, "resolve_key", time.Since(startedAt), err)
+	return value, err
+}
+
+// ResolveKeyContext resolves a typed service key from the container with context diagnostics.
+func ResolveKeyContext[T any](ctx context.Context, c *Container, key ServiceKey[T]) (T, error) {
+	ctx = contextOrBackground(ctx)
+	name := serviceKeyName(c, key)
+	if c == nil || c.injector == nil {
+		var zero T
+		return zero, oops.In("dix").
+			With("op", "resolve_key", "service", name).
+			New("container is nil")
+	}
+	if err := ctx.Err(); err != nil {
+		var zero T
+		c.logServiceResolution(ctx, name, "resolve_key", 0, err)
+		return zero, oops.In("dix").
+			With("op", "resolve_key", "service", name).
+			Wrapf(err, "resolve context canceled")
+	}
+	startedAt := time.Now()
+	value, err := do.InvokeNamed[T](c.injector, name)
+	c.logServiceResolution(ctx, name, "resolve_key", time.Since(startedAt), err)
 	return value, err
 }
 
@@ -138,4 +162,22 @@ func MustResolveAs[T any](c *Container) T {
 			Wrapf(err, "resolve dependency"))
 	}
 	return result
+}
+
+// MustResolveKey resolves a typed service key and panics on failure.
+func MustResolveKey[T any](c *Container, key ServiceKey[T]) T {
+	result, err := ResolveKey(c, key)
+	if err != nil {
+		panic(oops.In("dix").
+			With("op", "must_resolve_key", "service", serviceKeyName(c, key)).
+			Wrapf(err, "resolve dependency"))
+	}
+	return result
+}
+
+func serviceKeyName[T any](c *Container, key ServiceKey[T]) string {
+	if c == nil {
+		return key.Name()
+	}
+	return key.nameWith(c.serviceNames)
 }

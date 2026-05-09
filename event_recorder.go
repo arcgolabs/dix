@@ -15,6 +15,12 @@ type EventRecord struct {
 	Event Event
 }
 
+// EventRecordOf is a timestamped framework event with a concrete event type.
+type EventRecordOf[T Event] struct {
+	At    time.Time
+	Event T
+}
+
 // EventRecorder stores recent framework events in a concurrent ring buffer.
 type EventRecorder struct {
 	buffer *collectionlist.ConcurrentRingBuffer[EventRecord]
@@ -88,6 +94,52 @@ func (r *EventRecorder) Events() *collectionlist.List[EventRecord] {
 	}
 	values := r.buffer.Values()
 	return collectionlist.NewListWithCapacity[EventRecord](len(values), values...)
+}
+
+// EventRecordsOf filters raw event records to records with event type T.
+func EventRecordsOf[T Event](records *collectionlist.List[EventRecord]) *collectionlist.List[EventRecordOf[T]] {
+	if records == nil || records.Len() == 0 {
+		return collectionlist.NewList[EventRecordOf[T]]()
+	}
+	typed := collectionlist.NewListWithCapacity[EventRecordOf[T]](records.Len())
+	records.Range(func(_ int, record EventRecord) bool {
+		event, ok := record.Event.(T)
+		if ok {
+			typed.Add(EventRecordOf[T]{
+				At:    record.At,
+				Event: event,
+			})
+		}
+		return true
+	})
+	return typed
+}
+
+// EventValuesOf filters raw event records to event values with event type T.
+func EventValuesOf[T Event](records *collectionlist.List[EventRecord]) *collectionlist.List[T] {
+	typed := EventRecordsOf[T](records)
+	values := collectionlist.NewListWithCapacity[T](typed.Len())
+	typed.Range(func(_ int, record EventRecordOf[T]) bool {
+		values.Add(record.Event)
+		return true
+	})
+	return values
+}
+
+// RecorderEventRecordsOf filters recorder events to records with event type T.
+func RecorderEventRecordsOf[T Event](recorder *EventRecorder) *collectionlist.List[EventRecordOf[T]] {
+	if recorder == nil {
+		return collectionlist.NewList[EventRecordOf[T]]()
+	}
+	return EventRecordsOf[T](recorder.Events())
+}
+
+// RuntimeEventRecordsOf filters runtime recent events to records with event type T.
+func RuntimeEventRecordsOf[T Event](rt *Runtime) *collectionlist.List[EventRecordOf[T]] {
+	if rt == nil {
+		return collectionlist.NewList[EventRecordOf[T]]()
+	}
+	return EventRecordsOf[T](rt.RecentEvents())
 }
 
 // Len returns the number of currently buffered events.

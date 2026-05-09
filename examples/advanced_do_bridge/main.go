@@ -46,7 +46,7 @@ func main() {
 	}
 	defer stopOrPanic(rt)
 
-	value, err := dixadvanced.ResolveNamedAs[namedValue](rt.Container(), "tenant.default")
+	value, err := dix.ResolveKey(rt.Container(), dix.NamedService[namedValue]("tenant.default"))
 	if err != nil {
 		panic(err)
 	}

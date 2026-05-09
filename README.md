@@ -53,15 +53,15 @@ go get github.com/arcgolabs/dix@latest
 - `dix.WithModuleProviders(...)`, `dix.WithModuleHooks(...)`, `dix.WithModuleImports(...)`
 - `dix.WithModuleProvider(...)`, `dix.WithModuleHook(...)`, `dix.WithModuleImport(...)`
 - `dix.Value(...)`, `dix.Invoke(...)`, `dix.ProviderN(...)`, `dix.OnStart(...)`, `dix.OnStop(...)`
-- `dix.ResolveAs(...)`, `dix.ResolveNamedAs(...)`, `dix.ResolveAsContext(ctx, ...)`
+- `dix.ResolveAs(...)`, `dix.ResolveKey(...)`, `dix.ResolveAsContext(ctx, ...)`, `dix.ResolveKeyContext(ctx, ...)`
 - `dix.Eager(...)`
 - `dix.LifecycleName(...)`, `dix.LifecycleAfter(...)`, `dix.LifecycleBefore(...)`, `dix.LifecyclePriority(...)`, `dix.LifecycleParallel(...)`, `dix.LifecycleTimeout(...)`, `dix.LifecycleConcurrency(...)`
 - `dix.As[T]()`, `dix.Into[T](...)`, `dix.Key(...)`, `dix.Order(...)`, `dix.ContributeN[T](...)`
 - `dix.SubApps(...)`, `dix.NewSubApp(...)`, `app.DependencyGraph()`, `app.Explain()`
-- `rt.Scope(...)`, `dix.ScopeFunc(...)`, `dix.ProvideNamedValueT(...)`, `dix.ProvideNamedT(...)`, `dix.ProvideNamed1T(...)`
+- `rt.Scope(...)`, `dix.ScopeFunc(...)`, `dix.NamedService[T](...)`, `dix.ProvideKeyValue(...)`, `dix.ProvideKey(...)`, `dix.ProvideKey1(...)`
 - `app.Test(...)`, `dix.TestValue(...)`, `dix.TestProviders(...)`, `dix.TestDisableModules(...)`
 - `rt.LifecycleSummary()`, `rt.SubAppSummaries()`, `rt.ScopePath()`
-- `rt.RecentEvents()`, `rt.EventRecorder()`
+- `rt.RecentEvents()`, `rt.EventRecorder()`, `dix.RuntimeEventRecordsOf[T](...)`, `dix.EventValuesOf[T](...)`
 - `report.WarningKindCounts()`, `report.DeclaredServiceCounts()`, `graph.RelationTable()`, `graph.ServiceNodeIndex()`, `graph.ModuleNodeIndex()`
 - `advanced.Named(...)`, `advanced.Alias(...)`, `advanced.NamedAlias(...)`, `advanced.Transient(...)`, `advanced.Override(...)`
 - `testx.Validate(t, app)`, `testx.Build(t, app)`, `testx.Start(ctx, t, app)`
@@ -77,6 +77,7 @@ go get github.com/arcgolabs/dix@latest
 - `WithLoggerFrom...` remains supported for custom resolver flows, but a normal logger should live in the module graph.
 - `Observers(...)` remain the extension path for sidecar consumers such as metrics, not the primary framework logger hook.
 - For zero-dependency registrations, `Value(...)` and `Invoke(...)` reduce the remaining boilerplate on the core path.
+- Use `NamedService[T](name)` to create a typed key for named services, then pass it to `ResolveKey(...)`, `ProvideKey...(...)`, or advanced named provider helpers. Public named-service registration and resolution APIs intentionally avoid bare `string` names.
 - Use `As[T]` for a unique typed alias, and `Into[T]` / `ContributeN[T]` for multi-binding collection roles. Collection consumers can depend directly on `[]T`, `collectionx.List[T]`, `map[string]T`, `collectionx.Map[string, T]`, or `collectionx.OrderedMap[string, T]`.
 - Use `SubApps(...)` when a child app should share parent services but keep its own modules, lifecycle hooks, and child `do` scope.
 - Lifecycle hooks start by ascending priority and stop by descending priority. Use `LifecycleAfter(...)` / `LifecycleBefore(...)` for named hook dependencies; priority and declaration order remain the tie-breakers. Hooks remain serial unless `LifecycleParallel()` is set, in which case adjacent unconstrained hooks with the same priority can run through the configured lifecycle worker pool. Use `LifecycleTimeout(...)` to pass an individual hook a deadline-aware context.
@@ -140,7 +141,7 @@ app := dix.New("worker",
 ```
 
 Build, start, stop, setup, invoke, provider construction, and explicit `ResolveAsContext` diagnostics include duration fields when debug logging is enabled. Observers can also implement `ProviderObserver`, `ResolveObserver`, or `LifecycleHookObserver` for structured diagnostic events suitable for metrics and tracing.
-Use `dix.RecentEvents(capacity)` when a runtime should keep the last N framework events in memory. The runtime stores them in a `collectionx/list.ConcurrentRingBuffer`; `rt.RecentEvents()` returns a FIFO `collectionx` list snapshot, and `rt.RecentEventSnapshot()` exposes the underlying ring-buffer snapshot.
+Use `dix.RecentEvents(capacity)` when a runtime should keep the last N framework events in memory. The runtime stores them in a `collectionx/list.ConcurrentRingBuffer`; `rt.RecentEvents()` returns a FIFO `collectionx` list snapshot, and `rt.RecentEventSnapshot()` exposes the underlying ring-buffer snapshot. Use `RuntimeEventRecordsOf[dix.ResolveEvent](rt)` or `EventValuesOf[dix.BuildEvent](records)` when callers need typed event subsets without manual type switches.
 
 ## Eager providers
 

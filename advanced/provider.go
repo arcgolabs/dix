@@ -6,34 +6,38 @@ import (
 )
 
 // NamedValue registers a named singleton value.
-func NamedValue[T any](name string, value T) dix.ProviderFunc {
-	return newProvider("NamedValue", dix.NamedService(name), func(c *dix.Container) {
+func NamedValue[T any](key dix.ServiceKey[T], value T) dix.ProviderFunc {
+	name := key.Name()
+	return newProvider("NamedValue", key.Ref(), func(c *dix.Container) {
 		do.ProvideNamedValue(c.Raw(), name, value)
 	})
 }
 
 // Named registers a named singleton value.
-func Named[T any](name string, value T) dix.ProviderFunc {
-	return NamedValue(name, value)
+func Named[T any](key dix.ServiceKey[T], value T) dix.ProviderFunc {
+	return NamedValue(key, value)
 }
 
 // NamedProvider0 registers a named singleton provider with no dependencies.
-func NamedProvider0[T any](name string, fn func() T) dix.ProviderFunc {
-	return newProvider("NamedProvider0", dix.NamedService(name), func(c *dix.Container) {
+func NamedProvider0[T any](key dix.ServiceKey[T], fn func() T) dix.ProviderFunc {
+	name := key.Name()
+	return newProvider("NamedProvider0", key.Ref(), func(c *dix.Container) {
 		do.ProvideNamed(c.Raw(), name, func(do.Injector) (T, error) { return fn(), nil })
 	})
 }
 
 // NamedProviderErr0 registers a named singleton provider with no dependencies.
-func NamedProviderErr0[T any](name string, fn func() (T, error)) dix.ProviderFunc {
-	return newProvider("NamedProviderErr0", dix.NamedService(name), func(c *dix.Container) {
+func NamedProviderErr0[T any](key dix.ServiceKey[T], fn func() (T, error)) dix.ProviderFunc {
+	name := key.Name()
+	return newProvider("NamedProviderErr0", key.Ref(), func(c *dix.Container) {
 		do.ProvideNamed(c.Raw(), name, func(do.Injector) (T, error) { return fn() })
 	})
 }
 
 // NamedProvider1 registers a named singleton provider with one dependency.
-func NamedProvider1[T, D1 any](name string, fn func(D1) T) dix.ProviderFunc {
-	return newProvider("NamedProvider1", dix.NamedService(name), func(c *dix.Container) {
+func NamedProvider1[T, D1 any](key dix.ServiceKey[T], fn func(D1) T) dix.ProviderFunc {
+	name := key.Name()
+	return newProvider("NamedProvider1", key.Ref(), func(c *dix.Container) {
 		do.ProvideNamed(c.Raw(), name, func(i do.Injector) (T, error) {
 			d1, err := invokeTyped[D1](i)
 			if err != nil {
@@ -46,8 +50,9 @@ func NamedProvider1[T, D1 any](name string, fn func(D1) T) dix.ProviderFunc {
 }
 
 // NamedProviderErr1 registers a named singleton provider with one dependency.
-func NamedProviderErr1[T, D1 any](name string, fn func(D1) (T, error)) dix.ProviderFunc {
-	return newProvider("NamedProviderErr1", dix.NamedService(name), func(c *dix.Container) {
+func NamedProviderErr1[T, D1 any](key dix.ServiceKey[T], fn func(D1) (T, error)) dix.ProviderFunc {
+	name := key.Name()
+	return newProvider("NamedProviderErr1", key.Ref(), func(c *dix.Container) {
 		do.ProvideNamed(c.Raw(), name, func(i do.Injector) (T, error) {
 			d1, err := invokeTyped[D1](i)
 			if err != nil {
@@ -60,8 +65,9 @@ func NamedProviderErr1[T, D1 any](name string, fn func(D1) (T, error)) dix.Provi
 }
 
 // NamedProvider2 registers a named singleton provider with two dependencies.
-func NamedProvider2[T, D1, D2 any](name string, fn func(D1, D2) T) dix.ProviderFunc {
-	return newProvider("NamedProvider2", dix.NamedService(name), func(c *dix.Container) {
+func NamedProvider2[T, D1, D2 any](key dix.ServiceKey[T], fn func(D1, D2) T) dix.ProviderFunc {
+	name := key.Name()
+	return newProvider("NamedProvider2", key.Ref(), func(c *dix.Container) {
 		do.ProvideNamed(c.Raw(), name, func(i do.Injector) (T, error) {
 			d1, err := invokeTyped[D1](i)
 			if err != nil {
@@ -79,8 +85,9 @@ func NamedProvider2[T, D1, D2 any](name string, fn func(D1, D2) T) dix.ProviderF
 }
 
 // NamedProviderErr2 registers a named singleton provider with two dependencies.
-func NamedProviderErr2[T, D1, D2 any](name string, fn func(D1, D2) (T, error)) dix.ProviderFunc {
-	return newProvider("NamedProviderErr2", dix.NamedService(name), func(c *dix.Container) {
+func NamedProviderErr2[T, D1, D2 any](key dix.ServiceKey[T], fn func(D1, D2) (T, error)) dix.ProviderFunc {
+	name := key.Name()
+	return newProvider("NamedProviderErr2", key.Ref(), func(c *dix.Container) {
 		do.ProvideNamed(c.Raw(), name, func(i do.Injector) (T, error) {
 			d1, err := invokeTyped[D1](i)
 			if err != nil {
@@ -98,8 +105,9 @@ func NamedProviderErr2[T, D1, D2 any](name string, fn func(D1, D2) (T, error)) d
 }
 
 // NamedProvider3 registers a named singleton provider with three dependencies.
-func NamedProvider3[T, D1, D2, D3 any](name string, fn func(D1, D2, D3) T) dix.ProviderFunc {
-	return newProvider("NamedProvider3", dix.NamedService(name), func(c *dix.Container) {
+func NamedProvider3[T, D1, D2, D3 any](key dix.ServiceKey[T], fn func(D1, D2, D3) T) dix.ProviderFunc {
+	name := key.Name()
+	return newProvider("NamedProvider3", key.Ref(), func(c *dix.Container) {
 		do.ProvideNamed(c.Raw(), name, func(i do.Injector) (T, error) {
 			d1, err := invokeTyped[D1](i)
 			if err != nil {
@@ -122,8 +130,9 @@ func NamedProvider3[T, D1, D2, D3 any](name string, fn func(D1, D2, D3) T) dix.P
 }
 
 // NamedProviderErr3 registers a named singleton provider with three dependencies.
-func NamedProviderErr3[T, D1, D2, D3 any](name string, fn func(D1, D2, D3) (T, error)) dix.ProviderFunc {
-	return newProvider("NamedProviderErr3", dix.NamedService(name), func(c *dix.Container) {
+func NamedProviderErr3[T, D1, D2, D3 any](key dix.ServiceKey[T], fn func(D1, D2, D3) (T, error)) dix.ProviderFunc {
+	name := key.Name()
+	return newProvider("NamedProviderErr3", key.Ref(), func(c *dix.Container) {
 		do.ProvideNamed(c.Raw(), name, func(i do.Injector) (T, error) {
 			d1, err := invokeTyped[D1](i)
 			if err != nil {
@@ -202,32 +211,35 @@ func TransientProviderErr1[T, D1 any](fn func(D1) (T, error)) dix.ProviderFunc {
 }
 
 // NamedTransientProvider0 registers a named transient provider with no dependencies.
-func NamedTransientProvider0[T any](name string, fn func() T) dix.ProviderFunc {
-	return newProvider("NamedTransientProvider0", dix.NamedService(name), func(c *dix.Container) {
+func NamedTransientProvider0[T any](key dix.ServiceKey[T], fn func() T) dix.ProviderFunc {
+	name := key.Name()
+	return newProvider("NamedTransientProvider0", key.Ref(), func(c *dix.Container) {
 		do.ProvideNamedTransient(c.Raw(), name, func(do.Injector) (T, error) { return fn(), nil })
 	})
 }
 
 // NamedTransient registers a named transient provider with no dependencies.
-func NamedTransient[T any](name string, fn func() T) dix.ProviderFunc {
-	return NamedTransientProvider0(name, fn)
+func NamedTransient[T any](key dix.ServiceKey[T], fn func() T) dix.ProviderFunc {
+	return NamedTransientProvider0(key, fn)
 }
 
 // NamedTransientProviderErr0 registers a named transient provider with no dependencies.
-func NamedTransientProviderErr0[T any](name string, fn func() (T, error)) dix.ProviderFunc {
-	return newProvider("NamedTransientProviderErr0", dix.NamedService(name), func(c *dix.Container) {
+func NamedTransientProviderErr0[T any](key dix.ServiceKey[T], fn func() (T, error)) dix.ProviderFunc {
+	name := key.Name()
+	return newProvider("NamedTransientProviderErr0", key.Ref(), func(c *dix.Container) {
 		do.ProvideNamedTransient(c.Raw(), name, func(do.Injector) (T, error) { return fn() })
 	})
 }
 
 // NamedTransientErr registers a named transient provider with no dependencies.
-func NamedTransientErr[T any](name string, fn func() (T, error)) dix.ProviderFunc {
-	return NamedTransientProviderErr0(name, fn)
+func NamedTransientErr[T any](key dix.ServiceKey[T], fn func() (T, error)) dix.ProviderFunc {
+	return NamedTransientProviderErr0(key, fn)
 }
 
 // NamedTransientProvider1 registers a named transient provider with one dependency.
-func NamedTransientProvider1[T, D1 any](name string, fn func(D1) T) dix.ProviderFunc {
-	return newProvider("NamedTransientProvider1", dix.NamedService(name), func(c *dix.Container) {
+func NamedTransientProvider1[T, D1 any](key dix.ServiceKey[T], fn func(D1) T) dix.ProviderFunc {
+	name := key.Name()
+	return newProvider("NamedTransientProvider1", key.Ref(), func(c *dix.Container) {
 		do.ProvideNamedTransient(c.Raw(), name, func(i do.Injector) (T, error) {
 			d1, err := invokeTyped[D1](i)
 			if err != nil {
@@ -240,8 +252,9 @@ func NamedTransientProvider1[T, D1 any](name string, fn func(D1) T) dix.Provider
 }
 
 // NamedTransientProviderErr1 registers a named transient provider with one dependency.
-func NamedTransientProviderErr1[T, D1 any](name string, fn func(D1) (T, error)) dix.ProviderFunc {
-	return newProvider("NamedTransientProviderErr1", dix.NamedService(name), func(c *dix.Container) {
+func NamedTransientProviderErr1[T, D1 any](key dix.ServiceKey[T], fn func(D1) (T, error)) dix.ProviderFunc {
+	name := key.Name()
+	return newProvider("NamedTransientProviderErr1", key.Ref(), func(c *dix.Container) {
 		do.ProvideNamedTransient(c.Raw(), name, func(i do.Injector) (T, error) {
 			d1, err := invokeTyped[D1](i)
 			if err != nil {

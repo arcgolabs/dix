@@ -134,11 +134,11 @@ func newAdvancedBenchmarkApp() *dix.App {
 	advancedModule := dix.NewModule("advanced",
 		dix.WithModuleImports(transportModule),
 		dix.WithModuleProviders(
-			dixadvanced.NamedValue("locale.default", "en-US"),
+			dixadvanced.NamedValue(dix.NamedService[string]("locale.default"), "en-US"),
 			dix.Provider1(func(logger *slog.Logger) *benchEnglishGreeter {
 				return &benchEnglishGreeter{logger: logger}
 			}),
-			dixadvanced.NamedProvider1[*benchEnglishGreeter, *slog.Logger]("greeter.en", func(logger *slog.Logger) *benchEnglishGreeter {
+			dixadvanced.NamedProvider1(dix.NamedService[*benchEnglishGreeter]("greeter.en"), func(logger *slog.Logger) *benchEnglishGreeter {
 				return &benchEnglishGreeter{logger: logger}
 			}),
 			dixadvanced.TransientProvider1[*benchTransientToken, *benchService](func(service *benchService) *benchTransientToken {
@@ -147,7 +147,10 @@ func newAdvancedBenchmarkApp() *dix.App {
 		),
 		dix.WithModuleSetups(
 			dixadvanced.BindAlias[*benchEnglishGreeter, benchGreeter](),
-			dixadvanced.BindNamedAlias[*benchEnglishGreeter, benchGreeter]("greeter.en", "greeter.en.alias"),
+			dixadvanced.BindNamedAlias(
+				dix.NamedService[*benchEnglishGreeter]("greeter.en"),
+				dix.NamedService[benchGreeter]("greeter.en.alias"),
+			),
 		),
 	)
 
@@ -183,7 +186,7 @@ func BenchmarkAdvancedResolveNamed(b *testing.B) {
 	b.ResetTimer()
 
 	for range b.N {
-		value, err := dixadvanced.ResolveNamedAs[string](rt.Container(), "locale.default")
+		value, err := dix.ResolveKey(rt.Container(), dix.NamedService[string]("locale.default"))
 		if err != nil {
 			b.Fatal(err)
 		}

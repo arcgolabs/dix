@@ -279,7 +279,7 @@ if err != nil {
 }
 ```
 
-Named scoped services can use `dix.ProvideNamedValueT(...)`, `dix.ProvideNamedT(...)`, `dix.ProvideNamed1T(...)`, and `dix.ResolveNamedAs(...)`.
+Named scoped services should use a typed key from `dix.NamedService[T](...)`, then pass it to `dix.ProvideKeyValue(...)`, `dix.ProvideKey(...)`, `dix.ProvideKey1(...)`, or `dix.ResolveKey(...)`.
 
 ## Optional: test helpers
 

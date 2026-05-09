@@ -421,33 +421,12 @@ func TestRuntimeRecentEventsUsesRingBuffer(t *testing.T) {
 
 	events := rt.RecentEvents()
 	require.LessOrEqual(t, events.Len(), 16)
-	require.True(t, eventRecordsContain(events, func(event dix.Event) bool {
-		_, ok := event.(dix.BuildEvent)
-		return ok
-	}))
-	require.True(t, eventRecordsContain(events, func(event dix.Event) bool {
-		_, ok := event.(dix.StartEvent)
-		return ok
-	}))
-	require.True(t, eventRecordsContain(events, func(event dix.Event) bool {
-		_, ok := event.(dix.StopEvent)
-		return ok
-	}))
-	require.True(t, eventRecordsContain(events, func(event dix.Event) bool {
-		_, ok := event.(dix.ResolveEvent)
-		return ok
-	}))
+	require.Positive(t, dix.RuntimeEventRecordsOf[dix.BuildEvent](rt).Len())
+	require.Positive(t, dix.RuntimeEventRecordsOf[dix.StartEvent](rt).Len())
+	require.Positive(t, dix.RuntimeEventRecordsOf[dix.StopEvent](rt).Len())
+	require.Positive(t, dix.EventValuesOf[dix.ResolveEvent](events).Len())
 	require.Equal(t, events.Len(), rt.EventRecorder().Snapshot().Len())
 	require.Equal(t, events.Len(), rt.RecentEventSnapshot().Len())
-}
-
-func eventRecordsContain(records *collectionlist.List[dix.EventRecord], match func(dix.Event) bool) bool {
-	found := false
-	records.Range(func(_ int, record dix.EventRecord) bool {
-		found = match(record.Event)
-		return !found
-	})
-	return found
 }
 
 type blockingObserver struct {

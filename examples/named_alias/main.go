@@ -35,14 +35,17 @@ func main() {
 			dix.Provider1(func(logger *slog.Logger) *englishGreeter {
 				return &englishGreeter{logger: logger}
 			}),
-			dixadvanced.Named("locale.default", "en-US"),
-			dixadvanced.NamedProvider1[*englishGreeter, *slog.Logger]("greeter.en", func(logger *slog.Logger) *englishGreeter {
+			dixadvanced.Named(dix.NamedService[string]("locale.default"), "en-US"),
+			dixadvanced.NamedProvider1(dix.NamedService[*englishGreeter]("greeter.en"), func(logger *slog.Logger) *englishGreeter {
 				return &englishGreeter{logger: logger}
 			}),
 		),
 		dix.Setups(
 			dixadvanced.Alias[*englishGreeter, greeter](),
-			dixadvanced.NamedAlias[*englishGreeter, greeter]("greeter.en", "greeter.en.alias"),
+			dixadvanced.NamedAlias(
+				dix.NamedService[*englishGreeter]("greeter.en"),
+				dix.NamedService[greeter]("greeter.en.alias"),
+			),
 		),
 	)
 
@@ -53,7 +56,7 @@ func main() {
 	}
 	defer stopOrPanic(rt)
 
-	locale, err := dixadvanced.ResolveNamedAs[string](rt.Container(), "locale.default")
+	locale, err := dix.ResolveKey(rt.Container(), dix.NamedService[string]("locale.default"))
 	if err != nil {
 		panic(err)
 	}
@@ -65,7 +68,7 @@ func main() {
 	}
 	printValues("implicit/assignable alias:", greeterValue.Greet())
 
-	namedAlias, err := dixadvanced.ResolveNamedAs[greeter](rt.Container(), "greeter.en.alias")
+	namedAlias, err := dix.ResolveKey(rt.Container(), dix.NamedService[greeter]("greeter.en.alias"))
 	if err != nil {
 		panic(err)
 	}

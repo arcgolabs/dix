@@ -22,7 +22,7 @@ func main() {
 			dix.NewModule("inspect",
 				dix.WithModuleProviders(
 					dix.Provider0(func() string { return "hello" }),
-					dixadvanced.NamedValue("tenant.default", "public"),
+					dixadvanced.NamedValue(dix.NamedService[string]("tenant.default"), "public"),
 				),
 			),
 		),
@@ -37,7 +37,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	_, err = dixadvanced.ResolveNamedAs[string](rt.Container(), "tenant.default")
+	_, err = dix.ResolveKey(rt.Container(), dix.NamedService[string]("tenant.default"))
 	if err != nil {
 		panic(err)
 	}

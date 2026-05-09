@@ -43,14 +43,17 @@ func TestAdvancedShortAliases(t *testing.T) {
 				dix.Providers(
 					dix.Provider0(func() *testGreeterImpl { return &testGreeterImpl{} }),
 					dix.Value("base"),
-					dixadvanced.Named("tenant.default", "public"),
-					dixadvanced.NamedProvider0[*testGreeterImpl]("tenant.default.greeter", func() *testGreeterImpl {
+					dixadvanced.Named(dix.NamedService[string]("tenant.default"), "public"),
+					dixadvanced.NamedProvider0(dix.NamedService[*testGreeterImpl]("tenant.default.greeter"), func() *testGreeterImpl {
 						return &testGreeterImpl{}
 					}),
 				),
 				dix.Setups(
 					dixadvanced.Alias[*testGreeterImpl, testGreeter](),
-					dixadvanced.NamedAlias[*testGreeterImpl, testGreeter]("tenant.default.greeter", "tenant.default.greeter.alias"),
+					dixadvanced.NamedAlias(
+						dix.NamedService[*testGreeterImpl]("tenant.default.greeter"),
+						dix.NamedService[testGreeter]("tenant.default.greeter.alias"),
+					),
 					dixadvanced.Override(func() string { return "override" }),
 				),
 			),
@@ -59,7 +62,7 @@ func TestAdvancedShortAliases(t *testing.T) {
 
 	rt := buildRuntime(t, app)
 
-	named, err := dixadvanced.ResolveNamedAs[string](rt.Container(), "tenant.default")
+	named, err := dix.ResolveKey(rt.Container(), dix.NamedService[string]("tenant.default"))
 	require.NoError(t, err)
 	assert.Equal(t, "public", named)
 
@@ -67,7 +70,7 @@ func TestAdvancedShortAliases(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotNil(t, greeterValue)
 
-	namedGreeter, err := dixadvanced.ResolveNamedAs[testGreeter](rt.Container(), "tenant.default.greeter.alias")
+	namedGreeter, err := dix.ResolveKey(rt.Container(), dix.NamedService[testGreeter]("tenant.default.greeter.alias"))
 	require.NoError(t, err)
 	assert.NotNil(t, namedGreeter)
 
@@ -130,13 +133,13 @@ func TestAdvancedInspectRuntime(t *testing.T) {
 		dix.WithModule(
 			dix.NewModule("inspect",
 				dix.WithModuleProviders(
-					dixadvanced.NamedValue("tenant.default", "public"),
+					dixadvanced.NamedValue(dix.NamedService[string]("tenant.default"), "public"),
 				),
 			),
 		),
 	))
 
-	_, err := dixadvanced.ResolveNamedAs[string](rt.Container(), "tenant.default")
+	_, err := dix.ResolveKey(rt.Container(), dix.NamedService[string]("tenant.default"))
 	require.NoError(t, err)
 
 	report := dixadvanced.InspectRuntime(rt, "tenant.default")
@@ -155,7 +158,7 @@ func TestAdvancedInspectRuntimeWithOptions(t *testing.T) {
 		dix.WithModule(
 			dix.NewModule("inspect-light",
 				dix.WithModuleProviders(
-					dixadvanced.NamedValue("tenant.default", "public"),
+					dixadvanced.NamedValue(dix.NamedService[string]("tenant.default"), "public"),
 				),
 			),
 		),
@@ -185,13 +188,13 @@ func TestAdvancedScopeNamedHelpers(t *testing.T) {
 	))
 
 	scope, err := rt.Scope("named-scope", dix.ScopeFunc(func(c *dix.Container) {
-		dix.ProvideNamed1T(c, "greeting", func(root string) string {
+		dix.ProvideKey1(c, dix.NamedService[string]("greeting"), func(root string) string {
 			return root + "-scoped"
 		})
 	}))
 	require.NoError(t, err)
 
-	value, err := dix.ResolveNamedAs[string](scope, "greeting")
+	value, err := dix.ResolveKey(scope, dix.NamedService[string]("greeting"))
 	require.NoError(t, err)
 	assert.Equal(t, "root-scoped", value)
 }
@@ -201,14 +204,14 @@ func TestAdvancedNamedProviderErr0PropagatesError(t *testing.T) {
 	rt := buildRuntime(t, dix.NewApp("named-provider-err",
 		dix.NewModule("named-provider-err",
 			dix.WithModuleProviders(
-				dixadvanced.NamedProviderErr0("tenant.default", func() (string, error) {
+				dixadvanced.NamedProviderErr0(dix.NamedService[string]("tenant.default"), func() (string, error) {
 					return "", expectedErr
 				}),
 			),
 		),
 	))
 
-	_, err := dixadvanced.ResolveNamedAs[string](rt.Container(), "tenant.default")
+	_, err := dix.ResolveKey(rt.Container(), dix.NamedService[string]("tenant.default"))
 	require.Error(t, err)
 	assert.ErrorIs(t, err, expectedErr)
 }
@@ -240,7 +243,7 @@ func TestAdvancedNamedTransientProviderErr1ResolvesDependencies(t *testing.T) {
 		dix.NewModule("named-transient-provider-err",
 			dix.WithModuleProviders(
 				dix.Provider0(func() string { return "root" }),
-				dixadvanced.NamedTransientProviderErr1("greeting", func(root string) (string, error) {
+				dixadvanced.NamedTransientProviderErr1(dix.NamedService[string]("greeting"), func(root string) (string, error) {
 					calls++
 					return root + "-scoped", nil
 				}),
@@ -248,9 +251,9 @@ func TestAdvancedNamedTransientProviderErr1ResolvesDependencies(t *testing.T) {
 		),
 	))
 
-	first, err := dixadvanced.ResolveNamedAs[string](rt.Container(), "greeting")
+	first, err := dix.ResolveKey(rt.Container(), dix.NamedService[string]("greeting"))
 	require.NoError(t, err)
-	second, err := dixadvanced.ResolveNamedAs[string](rt.Container(), "greeting")
+	second, err := dix.ResolveKey(rt.Container(), dix.NamedService[string]("greeting"))
 	require.NoError(t, err)
 	assert.Equal(t, "root-scoped", first)
 	assert.Equal(t, "root-scoped", second)
@@ -289,13 +292,13 @@ func TestAdvancedScopedNamedProviderErr0PropagatesError(t *testing.T) {
 	))
 
 	scope, err := rt.Scope("named-err-scope", dix.ScopeFunc(func(c *dix.Container) {
-		dix.ProvideNamedTErr(c, "tenant.default", func() (string, error) {
+		dix.ProvideKeyErr(c, dix.NamedService[string]("tenant.default"), func() (string, error) {
 			return "", expectedErr
 		})
 	}))
 	require.NoError(t, err)
 
-	_, err = dix.ResolveNamedAs[string](scope, "tenant.default")
+	_, err = dix.ResolveKey(scope, dix.NamedService[string]("tenant.default"))
 	require.Error(t, err)
 	assert.ErrorIs(t, err, expectedErr)
 }
@@ -325,17 +328,17 @@ func TestAdvancedNamedOverrideErr0PropagatesError(t *testing.T) {
 	rt := buildRuntime(t, dix.NewApp("named-override-err",
 		dix.NewModule("named-override-err",
 			dix.WithModuleProviders(
-				dixadvanced.NamedProvider0("tenant.default", func() string { return "base" }),
+				dixadvanced.NamedProvider0(dix.NamedService[string]("tenant.default"), func() string { return "base" }),
 			),
 			dix.WithModuleSetups(
-				dixadvanced.NamedOverrideErr0("tenant.default", func() (string, error) {
+				dixadvanced.NamedOverrideErr0(dix.NamedService[string]("tenant.default"), func() (string, error) {
 					return "", expectedErr
 				}),
 			),
 		),
 	))
 
-	_, err := dixadvanced.ResolveNamedAs[string](rt.Container(), "tenant.default")
+	_, err := dix.ResolveKey(rt.Container(), dix.NamedService[string]("tenant.default"))
 	require.Error(t, err)
 	assert.ErrorIs(t, err, expectedErr)
 }
@@ -448,7 +451,7 @@ func TestValidateReportUsesDeclaredRawMetadata(t *testing.T) {
 			}, dix.SetupMetadata{
 				Label:         "RawDoSetup",
 				Dependencies:  dix.ServiceRefs(dix.TypedService[Config]()),
-				Provides:      dix.ServiceRefs(dix.NamedService("tenant.default")),
+				Provides:      dix.ServiceRefs(dix.NamedService[string]("tenant.default").Ref()),
 				GraphMutation: true,
 			}),
 		),

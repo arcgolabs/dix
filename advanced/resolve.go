@@ -50,24 +50,25 @@ func MustResolveRuntimeAs[T any](rt *dix.Runtime) T {
 	return value
 }
 
-// ResolveNamedAs resolves a named value from a dix container.
-func ResolveNamedAs[T any](c *dix.Container, name string) (T, error) {
+// ResolveKey resolves a typed service key from a dix container.
+func ResolveKey[T any](c *dix.Container, key dix.ServiceKey[T]) (T, error) {
+	name := key.Name()
 	if c == nil || c.Raw() == nil {
 		var zero T
 		return zero, oops.In("dix/advanced").
-			With("op", "resolve_named", "name", name).
+			With("op", "resolve_key", "service", name).
 			New("container is nil")
 	}
 	return do.InvokeNamed[T](c.Raw(), name)
 }
 
-// MustResolveNamedAs resolves a named value from a dix container and panics on failure.
-func MustResolveNamedAs[T any](c *dix.Container, name string) T {
-	value, err := ResolveNamedAs[T](c, name)
+// MustResolveKey resolves a typed service key from a dix container and panics on failure.
+func MustResolveKey[T any](c *dix.Container, key dix.ServiceKey[T]) T {
+	value, err := ResolveKey(c, key)
 	if err != nil {
 		panic(oops.In("dix/advanced").
-			With("op", "must_resolve_named", "name", name).
-			Wrapf(err, "resolve named dependency"))
+			With("op", "must_resolve_key", "service", key.Name()).
+			Wrapf(err, "resolve keyed dependency"))
 	}
 	return value
 }

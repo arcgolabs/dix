@@ -184,7 +184,7 @@ app := dix.NewApp("errors",
 )
 
 requestScope, err := rt.Scope("request-42", dix.ScopeFunc(func(c *dix.Container) {
-    dix.ProvideNamedTErr(c, "tenant.default", func() (string, error) {
+    dix.ProvideKeyErr(c, dix.NamedService[string]("tenant.default"), func() (string, error) {
         return resolveTenantFromRequest()
     })
 }))

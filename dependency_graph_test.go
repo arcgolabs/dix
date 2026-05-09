@@ -95,7 +95,7 @@ func TestValidationMissingDependencyIncludesAvailableServices(t *testing.T) {
 				return nil
 			}, dix.InvokeMetadata{
 				Label:        "missing",
-				Dependencies: dix.ServiceRefs(dix.NamedService("graphConfig")),
+				Dependencies: dix.ServiceRefs(dix.NamedService[graphConfig]("graphConfig").Ref()),
 			})),
 		)),
 	)

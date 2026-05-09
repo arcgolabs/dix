@@ -203,7 +203,7 @@ func buildContributionRefs(
 		service := contributionServiceName(spec.target.Name, sourceName, index)
 		ref := ContributionRef{
 			Target:  spec.target,
-			Service: NamedService(service),
+			Service: namedServiceRef(service),
 			Key:     spec.options.key,
 			HasKey:  spec.options.hasKey,
 			Order:   spec.options.order,

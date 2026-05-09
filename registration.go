@@ -6,9 +6,27 @@ import (
 )
 
 // ServiceRef identifies a service in the container graph.
-// Typed services should use TypedService[T](). Named services should use NamedService(name).
+// Typed services should use TypedService[T](). Named services should use NamedService[T](name).Ref().
 type ServiceRef struct {
 	Name string
+}
+
+// Ref returns the service reference itself.
+func (r ServiceRef) Ref() ServiceRef {
+	return r
+}
+
+// ServiceKey is a typed handle to a service identity.
+//
+// A zero-value ServiceKey[T] identifies the default typed service T. Use
+// NamedService[T](name) for named services with compile-time value type attached.
+type ServiceKey[T any] struct {
+	name string
+}
+
+// TypedServiceKey returns a typed key for the default service T.
+func TypedServiceKey[T any]() ServiceKey[T] {
+	return ServiceKey[T]{}
 }
 
 // TypedService returns a typed service reference for T.
@@ -16,8 +34,29 @@ func TypedService[T any]() ServiceRef {
 	return ServiceRef{Name: serviceNameOf[T]()}
 }
 
-// NamedService returns a named service reference.
-func NamedService(name string) ServiceRef {
+// NamedService returns a typed key for a named service.
+func NamedService[T any](name string) ServiceKey[T] {
+	return ServiceKey[T]{name: name}
+}
+
+// Name returns the concrete service name represented by this key.
+func (k ServiceKey[T]) Name() string {
+	return k.nameWith(nil)
+}
+
+// Ref returns a graph service reference for this key.
+func (k ServiceKey[T]) Ref() ServiceRef {
+	return ServiceRef{Name: k.Name()}
+}
+
+func (k ServiceKey[T]) nameWith(n *serviceNamer) string {
+	if k.name != "" {
+		return k.name
+	}
+	return serviceNameOfWith[T](n)
+}
+
+func namedServiceRef(name string) ServiceRef {
 	return ServiceRef{Name: name}
 }
 
