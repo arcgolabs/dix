@@ -54,6 +54,16 @@ func runEagerProvider(ctx context.Context, mod *moduleSpec, rt *Runtime, provide
 	_, err := resolveNamedAny(rt.container.Raw(), service)
 	duration := time.Since(startedAt)
 	rt.container.logServiceResolution(ctx, service, "eager", duration, err)
+	rt.emitProvider(ctx, ProviderEvent{
+		Meta:      rt.Meta(),
+		Profile:   rt.Profile(),
+		Module:    mod.name,
+		Label:     provider.meta.Label,
+		Service:   service,
+		Operation: "eager",
+		Duration:  duration,
+		Err:       err,
+	})
 	if err != nil {
 		rt.logMessage(ctx, EventLevelError, "eager provider failed",
 			"module", mod.name,

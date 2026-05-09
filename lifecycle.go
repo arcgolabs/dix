@@ -84,6 +84,7 @@ type lifecycleImpl struct {
 	concurrency int
 	logger      *slog.Logger
 	eventLogger EventLogger
+	emitHook    func(context.Context, LifecycleHookEvent)
 }
 
 func newLifecycle(logger *slog.Logger, concurrency ...int) *lifecycleImpl {

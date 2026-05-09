@@ -3,6 +3,7 @@ package dix
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/samber/do/v2"
 	"github.com/samber/mo"
@@ -18,6 +19,20 @@ func ResolveAs[T any](c *Container) (T, error) {
 			New("container is nil")
 	}
 	return resolveContainerAs[T](c)
+}
+
+// ResolveNamedAs resolves a named value from the container.
+func ResolveNamedAs[T any](c *Container, name string) (T, error) {
+	if c == nil || c.injector == nil {
+		var zero T
+		return zero, oops.In("dix").
+			With("op", "resolve_named", "name", name).
+			New("container is nil")
+	}
+	startedAt := time.Now()
+	value, err := do.InvokeNamed[T](c.injector, name)
+	c.logServiceResolution(context.Background(), name, "resolve_named", time.Since(startedAt), err)
+	return value, err
 }
 
 // ResolveAsContext resolves a typed value from the container and logs resolution timing with ctx.

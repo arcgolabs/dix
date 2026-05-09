@@ -174,6 +174,7 @@ runtimeModule := dix.NewModule("runtime",
 		),
 		dix.OnStart0(startQueue,
 			dix.LifecycleName("queue"),
+			dix.LifecycleAfter("cache"),
 			dix.LifecyclePriority(10),
 			dix.LifecycleParallel(),
 			dix.LifecycleTimeout(10 * time.Second),
@@ -185,6 +186,7 @@ runtimeModule := dix.NewModule("runtime",
 		),
 		dix.OnStop0(stopCache,
 			dix.LifecycleName("cache"),
+			dix.LifecycleAfter("queue"),
 			dix.LifecyclePriority(10),
 			dix.LifecycleParallel(),
 		),
@@ -197,9 +199,11 @@ app := dix.NewDefault(
 )
 ```
 
-Only adjacent hooks with the same priority and `LifecycleParallel()` are run together. Any serial hook remains a barrier. `LifecycleTimeout(...)` passes a deadline-aware child context to the hook; hooks should respect `ctx.Done()` for cooperative cancellation. `LifecycleSummary()` includes hook names, priorities, parallel flags, timeouts, and the resolved lifecycle concurrency.
+Use `LifecycleAfter(...)` and `LifecycleBefore(...)` when named hooks have ordering dependencies. The scheduler performs a topological sort within each lifecycle phase; priority and declaration order are still used as tie-breakers for hooks that are otherwise independent.
 
-When debug logging is enabled, lifecycle hooks log duration fields. Build diagnostics also include build duration, setup duration, invoke duration, provider construction duration, and explicit `ResolveAsContext` duration after framework logging has been configured.
+Only adjacent unconstrained hooks with the same priority and `LifecycleParallel()` are run together. Any serial hook or named ordering constraint remains a barrier. `LifecycleTimeout(...)` passes a deadline-aware child context to the hook; hooks should respect `ctx.Done()` for cooperative cancellation. `LifecycleSummary()` includes hook names, priorities, ordering constraints, parallel flags, timeouts, and the resolved lifecycle concurrency.
+
+When debug logging is enabled, lifecycle hooks log duration fields. Build diagnostics also include build duration, setup duration, invoke duration, provider construction duration, and explicit `ResolveAsContext` duration after framework logging has been configured. Observers can implement `ProviderObserver`, `ResolveObserver`, or `LifecycleHookObserver` to receive structured diagnostic events for metrics and tracing.
 
 ## Eager provider warmup
 

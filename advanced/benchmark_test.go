@@ -10,7 +10,6 @@ import (
 
 	"github.com/arcgolabs/dix"
 	dixadvanced "github.com/arcgolabs/dix/advanced"
-	"github.com/samber/do/v2"
 )
 
 type benchConfig struct {
@@ -301,19 +300,22 @@ func BenchmarkAdvancedScopeResolve(b *testing.B) {
 	for i := range b.N {
 		names[i] = "request-bench-" + strconv.Itoa(i)
 	}
-	scopePackage := func(injector do.Injector) {
-		dixadvanced.ProvideScopedValue(injector, benchRequestContext{RequestID: "req-42"})
-		dixadvanced.ProvideScoped2(injector, func(service *benchService, req benchRequestContext) benchScopedHandler {
+	scopePackage := dix.ScopeFunc(func(c *dix.Container) {
+		dix.ProvideValueT(c, benchRequestContext{RequestID: "req-42"})
+		dix.Provide2T(c, func(service *benchService, req benchRequestContext) benchScopedHandler {
 			return benchScopedHandler{service: service, req: req}
 		})
-	}
+	})
 
 	b.ReportAllocs()
 	b.ResetTimer()
 
 	for i := range b.N {
-		scope := dixadvanced.Scope(rt, names[i], scopePackage)
-		handler, err := dixadvanced.ResolveScopedAs[benchScopedHandler](scope)
+		scope, err := rt.Scope(names[i], scopePackage)
+		if err != nil {
+			b.Fatal(err)
+		}
+		handler, err := dix.ResolveAs[benchScopedHandler](scope)
 		if err != nil {
 			b.Fatal(err)
 		}

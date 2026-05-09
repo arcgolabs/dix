@@ -22,6 +22,41 @@ type recordingObserver struct {
 	transitions []dix.StateTransitionEvent
 }
 
+type detailedRecordingObserver struct {
+	recordingObserver
+	providers []dix.ProviderEvent
+	resolves  []dix.ResolveEvent
+	hooks     []dix.LifecycleHookEvent
+}
+
+func (r *detailedRecordingObserver) detailSnapshot() ([]dix.ProviderEvent, []dix.ResolveEvent, []dix.LifecycleHookEvent) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	providers := append([]dix.ProviderEvent(nil), r.providers...)
+	resolves := append([]dix.ResolveEvent(nil), r.resolves...)
+	hooks := append([]dix.LifecycleHookEvent(nil), r.hooks...)
+	return providers, resolves, hooks
+}
+
+func (r *detailedRecordingObserver) OnProvider(_ context.Context, event dix.ProviderEvent) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.providers = append(r.providers, event)
+}
+
+func (r *detailedRecordingObserver) OnResolve(_ context.Context, event dix.ResolveEvent) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.resolves = append(r.resolves, event)
+}
+
+func (r *detailedRecordingObserver) OnLifecycleHook(_ context.Context, event dix.LifecycleHookEvent) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.hooks = append(r.hooks, event)
+}
+
 func (r *recordingObserver) snapshot() ([]dix.BuildEvent, []dix.StartEvent, []dix.StopEvent, []dix.HealthCheckEvent, []dix.StateTransitionEvent) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -325,6 +360,39 @@ func TestObserverReceivesBuildFailureEvent(t *testing.T) {
 	if builds[0].Err == nil {
 		t.Fatal("expected build event error to be set")
 	}
+}
+
+func TestOptionalObserverReceivesDetailedEvents(t *testing.T) {
+	observer := &detailedRecordingObserver{}
+	app := dix.New("observer-detail",
+		dix.WithObserver(observer),
+		dix.Modules(
+			dix.NewModule("detail",
+				dix.Providers(dix.Value("value")),
+				dix.Hooks(
+					dix.OnStart0(func(context.Context) error { return nil }, dix.LifecycleName("start")),
+					dix.OnStop0(func(context.Context) error { return nil }, dix.LifecycleName("stop")),
+				),
+			),
+		),
+	)
+
+	rt, err := app.Start(context.Background())
+	require.NoError(t, err)
+	_, err = dix.ResolveAsContext[string](context.Background(), rt.Container())
+	require.NoError(t, err)
+	require.NoError(t, rt.Stop(context.Background()))
+
+	require.Eventually(t, func() bool {
+		providers, resolves, hooks := observer.detailSnapshot()
+		return len(providers) >= 1 && len(resolves) >= 1 && len(hooks) >= 2
+	}, time.Second, 10*time.Millisecond)
+
+	providers, resolves, hooks := observer.detailSnapshot()
+	require.Equal(t, "register", providers[0].Operation)
+	require.Equal(t, "resolve", resolves[len(resolves)-1].Operation)
+	require.Equal(t, dix.HookKindStart, hooks[0].Kind)
+	require.Equal(t, dix.HookKindStop, hooks[len(hooks)-1].Kind)
 }
 
 type blockingObserver struct {

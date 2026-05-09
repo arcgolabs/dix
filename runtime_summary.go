@@ -19,6 +19,8 @@ type LifecycleHookSummary struct {
 	Name     string
 	Label    string
 	Kind     HookKind
+	After    *collectionlist.List[string]
+	Before   *collectionlist.List[string]
 	Priority int
 	Parallel bool
 	Timeout  time.Duration
@@ -42,8 +44,8 @@ func (r *Runtime) LifecycleSummary() LifecycleSummary {
 	return LifecycleSummary{
 		StartHooks:  r.lifecycle.startHooks.Len(),
 		StopHooks:   r.lifecycle.stopHooks.Len(),
-		Start:       lifecycleHookSummaries(r.lifecycle.startOrder(r.lifecycle.startHooks)),
-		Stop:        lifecycleHookSummaries(r.lifecycle.stopOrder(r.lifecycle.stopHooks)),
+		Start:       lifecycleHookSummaries(r.lifecycle.startOrderForSummary(r.lifecycle.startHooks)),
+		Stop:        lifecycleHookSummaries(r.lifecycle.stopOrderForSummary(r.lifecycle.stopHooks)),
 		Concurrency: r.lifecycle.resolvedConcurrency(),
 	}
 }
@@ -55,6 +57,8 @@ func lifecycleHookSummaries(entries []lifecycleHookEntry) *collectionlist.List[L
 			Name:     hookName(entry.meta),
 			Label:    entry.meta.Label,
 			Kind:     entry.meta.Kind,
+			After:    entry.meta.After.Clone(),
+			Before:   entry.meta.Before.Clone(),
 			Priority: entry.meta.Priority,
 			Parallel: entry.meta.Parallel,
 			Timeout:  entry.meta.Timeout,

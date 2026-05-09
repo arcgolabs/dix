@@ -15,6 +15,9 @@ The new standalone subpackage `github.com/arcgolabs/dix/metrics` only translates
 - stop
 - health check
 - state transition
+- provider registration / eager warmup
+- service resolution
+- lifecycle hook execution
 
 That means:
 
@@ -135,6 +138,12 @@ The default prefix is `dix_`.
 - `dix_health_check_total`
 - `dix_health_check_duration_ms`
 - `dix_state_transition_total`
+- `dix_provider_total`
+- `dix_provider_duration_ms`
+- `dix_resolve_total`
+- `dix_resolve_duration_ms`
+- `dix_lifecycle_hook_total`
+- `dix_lifecycle_hook_duration_ms`
 
 ## Default labels
 
@@ -149,6 +158,9 @@ Extra labels:
 
 - health checks: `kind`, optional `check`
 - state transitions: `from`, `to`
+- providers: `module`, `label`, `service`, `op`
+- resolves: `service`, `op`
+- lifecycle hooks: `kind`, `name`, `label`
 
 ## Customizing prefix and labels
 
@@ -178,7 +190,7 @@ app := dix.New(
 - the Prometheus `/metrics` handler still comes from `observabilityx/prometheus`
 - OTel exporter and SDK initialization still belong to your application
 
-If you need a different shape or finer-grained runtime telemetry, implement your own `dix.Observer` and attach it with `dix.WithObserver(...)`.
+If you need a different shape or finer-grained runtime telemetry, implement your own `dix.Observer`. For diagnostic detail, also implement `dix.ProviderObserver`, `dix.ResolveObserver`, or `dix.LifecycleHookObserver`, then attach it with `dix.WithObserver(...)`.
 
 ## Next
 

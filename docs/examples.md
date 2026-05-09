@@ -148,14 +148,17 @@ Declaring metadata keeps raw integration possible without making validation comp
 ## Example: Runtime Scope
 
 ```go
-requestScope := advanced.Scope(rt, "request-42", func(injector do.Injector) {
-    advanced.ProvideScopedValue(injector, RequestContext{RequestID: "req-42"})
-    advanced.ProvideScoped2(injector, func(cfg AppConfig, req RequestContext) ScopedService {
+requestScope, err := rt.Scope("request-42", dix.ScopeFunc(func(c *dix.Container) {
+    dix.ProvideValueT(c, RequestContext{RequestID: "req-42"})
+    dix.Provide2T(c, func(cfg AppConfig, req RequestContext) ScopedService {
         return ScopedService{Config: cfg, Request: req}
     })
-})
+}))
+if err != nil {
+    panic(err)
+}
 
-svc, err := advanced.ResolveScopedAs[ScopedService](requestScope)
+svc, err := dix.ResolveAs[ScopedService](requestScope)
 if err != nil {
     panic(err)
 }
@@ -180,11 +183,11 @@ app := dix.NewApp("errors",
     ),
 )
 
-requestScope := advanced.Scope(rt, "request-42", func(injector do.Injector) {
-    advanced.ProvideScopedNamedErr0(injector, "tenant.default", func() (string, error) {
+requestScope, err := rt.Scope("request-42", dix.ScopeFunc(func(c *dix.Container) {
+    dix.ProvideNamedTErr(c, "tenant.default", func() (string, error) {
         return resolveTenantFromRequest()
     })
-})
+}))
 ```
 
 Use the `Err` suffixed helpers when construction can fail and the failure should flow through normal resolution.

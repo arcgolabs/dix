@@ -53,6 +53,9 @@ func (StartEvent) dixEvent()           {}
 func (StopEvent) dixEvent()            {}
 func (HealthCheckEvent) dixEvent()     {}
 func (StateTransitionEvent) dixEvent() {}
+func (ProviderEvent) dixEvent()        {}
+func (ResolveEvent) dixEvent()         {}
+func (LifecycleHookEvent) dixEvent()   {}
 func (MessageEvent) dixEvent()         {}
 
 // NewSlogEventLogger adapts a slog logger to the dix EventLogger interface.
@@ -80,10 +83,25 @@ func (l *slogEventLogger) LogEvent(ctx context.Context, event Event) {
 	}
 
 	ctx = contextOrBackground(ctx)
+	if l.logEventMessage(ctx, event) {
+		return
+	}
+	if l.logRuntimeEvent(event) {
+		return
+	}
+	l.logDiagnosticEvent(event)
+}
 
-	switch e := event.(type) {
-	case MessageEvent:
+func (l *slogEventLogger) logEventMessage(ctx context.Context, event Event) bool {
+	if e, ok := event.(MessageEvent); ok {
 		l.logMessage(ctx, e)
+		return true
+	}
+	return false
+}
+
+func (l *slogEventLogger) logRuntimeEvent(event Event) bool {
+	switch e := event.(type) {
 	case BuildEvent:
 		l.logBuild(e)
 	case StartEvent:
@@ -99,7 +117,24 @@ func (l *slogEventLogger) LogEvent(ctx context.Context, event Event) {
 			"to", e.To.String(),
 			"reason", e.Reason,
 		)
+	default:
+		return false
 	}
+	return true
+}
+
+func (l *slogEventLogger) logDiagnosticEvent(event Event) bool {
+	switch e := event.(type) {
+	case ProviderEvent:
+		l.logProvider(e)
+	case ResolveEvent:
+		l.logResolve(e)
+	case LifecycleHookEvent:
+		l.logLifecycleHook(e)
+	default:
+		return false
+	}
+	return true
 }
 
 func (l *slogEventLogger) logBuild(event BuildEvent) {

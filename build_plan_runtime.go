@@ -50,6 +50,9 @@ func (p *buildPlan) completeRuntimeBuild(ctx context.Context, rt *Runtime, debug
 	if err := p.bindHooksAndRunSetups(ctx, rt, debugEnabled); err != nil {
 		return err
 	}
+	if err := rt.lifecycle.validateHookOrder(); err != nil {
+		return err
+	}
 	if err := p.runEagerProviders(ctx, rt, debugEnabled); err != nil {
 		return err
 	}

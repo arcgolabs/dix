@@ -20,6 +20,9 @@ type Container struct {
 	healthChecks             *collectionlist.List[healthCheckEntry]
 	logger                   *slog.Logger
 	eventLogger              EventLogger
+	meta                     AppMeta
+	profile                  Profile
+	emitResolveEvent         func(context.Context, ResolveEvent)
 	resolutionLoggingEnabled bool
 }
 
@@ -54,7 +57,13 @@ func newChildContainer(parent *Container, name string, logger *slog.Logger) (*Co
 	if logger == nil {
 		logger = parent.logger
 	}
-	return newContainerWithInjector(logger, parent.injector.Scope(name), parent.serviceNames), nil
+	child := newContainerWithInjector(logger, parent.injector.Scope(name), parent.serviceNames)
+	child.eventLogger = parent.eventLogger
+	child.meta = parent.meta
+	child.profile = parent.profile
+	child.emitResolveEvent = parent.emitResolveEvent
+	child.resolutionLoggingEnabled = parent.resolutionLoggingEnabled
+	return child, nil
 }
 
 func newContainerWithInjector(logger *slog.Logger, injector do.Injector, serviceNames *serviceNamer) *Container {
@@ -257,22 +266,4 @@ func provideNamedTimed[T any](c *Container, name string, fn func(do.Injector) (T
 		c.logServiceResolution(context.Background(), name, "construct", time.Since(startedAt), err)
 		return value, err
 	})
-}
-
-func (c *Container) logServiceResolution(ctx context.Context, name, op string, duration time.Duration, err error) {
-	if c == nil || !c.resolutionLoggingEnabled {
-		return
-	}
-	level := EventLevelDebug
-	message := "service resolved"
-	if err != nil {
-		level = EventLevelError
-		message = "service resolution failed"
-	}
-	logMessageEvent(ctx, c.eventLogger, level, message,
-		"op", op,
-		"service", name,
-		"duration", duration,
-		"error", err,
-	)
 }

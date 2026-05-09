@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	goruntime "runtime"
-	"sort"
 	"sync"
 	"time"
 
@@ -17,11 +16,19 @@ func (l *lifecycleImpl) executeStartHooks(ctx context.Context, _ *Container) (in
 	debugEnabled := l.debugEnabled(ctx)
 	l.logDebug(ctx, debugEnabled, "executing start hooks", "count", l.startHooks.Len())
 
-	return l.executeHookEntries(ctx, HookKindStart, l.startOrder(l.startHooks), true)
+	entries, err := l.startOrder(l.startHooks)
+	if err != nil {
+		return 0, err
+	}
+	return l.executeHookEntries(ctx, HookKindStart, entries, true)
 }
 
 func (l *lifecycleImpl) executeStopHooks(ctx context.Context, _ *Container) error {
-	_, err := l.executeHookEntries(ctx, HookKindStop, l.stopOrder(l.stopHooks), false)
+	entries, err := l.stopOrder(l.stopHooks)
+	if err != nil {
+		return err
+	}
+	_, err = l.executeHookEntries(ctx, HookKindStop, entries, false)
 	return err
 }
 
@@ -37,9 +44,12 @@ func (l *lifecycleImpl) executeStopHooksSubset(ctx context.Context, count int) e
 	debugEnabled := l.debugEnabled(ctx)
 	l.logDebug(ctx, debugEnabled, "executing stop hooks", "count", count, "registered", registered)
 
-	entries := l.startOrder(l.stopHooks)
+	entries, err := l.startOrder(l.stopHooks)
+	if err != nil {
+		return err
+	}
 	entries = entries[:count]
-	_, err := l.executeHookEntries(ctx, HookKindStop, stopOrderEntries(entries), false)
+	_, err = l.executeHookEntries(ctx, HookKindStop, reverseLifecycleEntries(entries), false)
 	return err
 }
 
@@ -86,9 +96,15 @@ func (l *lifecycleImpl) executeNextHookBatch(
 }
 
 func parallelGroupEnd(entries []lifecycleHookEntry, index int) int {
+	if lifecycleHookHasOrdering(entries[index].meta) {
+		return index + 1
+	}
 	priority := entries[index].meta.Priority
 	end := index + 1
-	for end < len(entries) && entries[end].meta.Parallel && entries[end].meta.Priority == priority {
+	for end < len(entries) &&
+		entries[end].meta.Parallel &&
+		entries[end].meta.Priority == priority &&
+		!lifecycleHookHasOrdering(entries[end].meta) {
 		end++
 	}
 	return end
@@ -224,62 +240,41 @@ func (l *lifecycleImpl) executeHookEntry(ctx context.Context, kind HookKind, ent
 	)
 	err := entry.run(hookCtx)
 	duration := time.Since(startedAt)
+	l.emitLifecycleHookResult(ctx, kind, entry, duration, err)
 	if err != nil {
-		logMessageEvent(ctx, l.eventLogger, EventLevelError, "lifecycle hook failed",
-			"kind", string(kind),
-			"name", name,
-			"label", entry.meta.Label,
-			"priority", entry.meta.Priority,
-			"parallel", entry.meta.Parallel,
-			"timeout", entry.meta.Timeout,
-			"sequence", entry.sequence,
-			"duration", duration,
-			"error", err,
-		)
 		return oops.In("dix").
 			With("op", string(kind)+"_hook", "name", name, "priority", entry.meta.Priority, "sequence", entry.sequence).
 			Wrapf(err, "%s hook %s failed", kind, name)
 	}
-	l.logDebug(ctx, debugEnabled, string(kind)+" hook completed",
-		"kind", string(kind),
-		"name", name,
-		"label", entry.meta.Label,
-		"priority", entry.meta.Priority,
-		"parallel", entry.meta.Parallel,
-		"timeout", entry.meta.Timeout,
-		"sequence", entry.sequence,
-		"duration", duration,
-	)
 	return nil
 }
 
-func (l *lifecycleImpl) startOrder(hooks *collectionlist.List[lifecycleHookEntry]) []lifecycleHookEntry {
-	if hooks == nil || hooks.Len() == 0 {
-		return nil
+func (l *lifecycleImpl) emitLifecycleHookResult(
+	ctx context.Context,
+	kind HookKind,
+	entry lifecycleHookEntry,
+	duration time.Duration,
+	err error,
+) {
+	event := LifecycleHookEvent{
+		Kind:     kind,
+		Name:     hookName(entry.meta),
+		Label:    entry.meta.Label,
+		Priority: entry.meta.Priority,
+		Parallel: entry.meta.Parallel,
+		Timeout:  entry.meta.Timeout,
+		Sequence: entry.sequence,
+		Duration: duration,
+		Err:      err,
 	}
-	entries := append([]lifecycleHookEntry(nil), hooks.Values()...)
-	sort.SliceStable(entries, func(i, j int) bool {
-		if entries[i].meta.Priority != entries[j].meta.Priority {
-			return entries[i].meta.Priority < entries[j].meta.Priority
-		}
-		return entries[i].sequence < entries[j].sequence
-	})
-	return entries
-}
-
-func (l *lifecycleImpl) stopOrder(hooks *collectionlist.List[lifecycleHookEntry]) []lifecycleHookEntry {
-	return stopOrderEntries(l.startOrder(hooks))
-}
-
-func stopOrderEntries(entries []lifecycleHookEntry) []lifecycleHookEntry {
-	ordered := append([]lifecycleHookEntry(nil), entries...)
-	sort.SliceStable(ordered, func(i, j int) bool {
-		if ordered[i].meta.Priority != ordered[j].meta.Priority {
-			return ordered[i].meta.Priority > ordered[j].meta.Priority
-		}
-		return ordered[i].sequence > ordered[j].sequence
-	})
-	return ordered
+	if l == nil {
+		return
+	}
+	if l.emitHook != nil {
+		l.emitHook(ctx, event)
+		return
+	}
+	emitEventLogger(ctx, l.eventLogger, event)
 }
 
 func (l *lifecycleImpl) resolvedConcurrency() int {
@@ -287,11 +282,4 @@ func (l *lifecycleImpl) resolvedConcurrency() int {
 		return max(1, goruntime.GOMAXPROCS(0))
 	}
 	return l.concurrency
-}
-
-func hookName(meta HookMetadata) string {
-	if meta.Name != "" {
-		return meta.Name
-	}
-	return meta.Label
 }

@@ -1,6 +1,11 @@
 package dix
 
-import "time"
+import (
+	"strings"
+	"time"
+
+	collectionlist "github.com/arcgolabs/collectionx/list"
+)
 
 // LifecycleHookOption configures lifecycle hook scheduling metadata.
 type LifecycleHookOption func(*HookMetadata)
@@ -21,6 +26,24 @@ func LifecyclePriority(priority int) LifecycleHookOption {
 	return func(meta *HookMetadata) {
 		if meta != nil {
 			meta.Priority = priority
+		}
+	}
+}
+
+// LifecycleAfter makes this hook run after the named hooks in the same lifecycle phase.
+func LifecycleAfter(names ...string) LifecycleHookOption {
+	return func(meta *HookMetadata) {
+		if meta != nil {
+			meta.After = appendLifecycleHookNames(meta.After, names...)
+		}
+	}
+}
+
+// LifecycleBefore makes this hook run before the named hooks in the same lifecycle phase.
+func LifecycleBefore(names ...string) LifecycleHookOption {
+	return func(meta *HookMetadata) {
+		if meta != nil {
+			meta.Before = appendLifecycleHookNames(meta.Before, names...)
 		}
 	}
 }
@@ -52,4 +75,17 @@ func applyLifecycleHookOptions(meta HookMetadata, opts ...LifecycleHookOption) H
 		}
 	}
 	return meta
+}
+
+func appendLifecycleHookNames(current *collectionlist.List[string], names ...string) *collectionlist.List[string] {
+	if current == nil {
+		current = collectionlist.NewList[string]()
+	}
+	for _, name := range names {
+		clean := strings.TrimSpace(name)
+		if clean != "" {
+			current.Add(clean)
+		}
+	}
+	return current
 }

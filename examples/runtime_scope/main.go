@@ -6,9 +6,7 @@ import (
 	"fmt"
 
 	"github.com/arcgolabs/dix"
-	dixadvanced "github.com/arcgolabs/dix/advanced"
 	"github.com/arcgolabs/logx"
-	do "github.com/samber/do/v2"
 )
 
 type appConfig struct {
@@ -54,24 +52,27 @@ func main() {
 	}
 	defer stopOrPanic(rt)
 
-	requestScope := dixadvanced.Scope(rt, "request-42", func(injector do.Injector) {
-		dixadvanced.ProvideScopedValue(injector, requestContext{RequestID: "req-42"})
-		dixadvanced.ProvideScoped2(injector, func(cfg appConfig, req requestContext) scopedService {
+	requestScope, err := rt.Scope("request-42", dix.ScopeFunc(func(c *dix.Container) {
+		dix.ProvideValueT(c, requestContext{RequestID: "req-42"})
+		dix.Provide2T(c, func(cfg appConfig, req requestContext) scopedService {
 			return scopedService{Config: cfg, Request: req}
 		})
-	})
-
-	service, err := dixadvanced.ResolveScopedAs[scopedService](requestScope)
+	}))
 	if err != nil {
 		panic(err)
 	}
 
-	_, rootCanResolveRequest := dixadvanced.ResolveRuntimeAs[requestContext](rt)
+	service, err := dix.ResolveAs[scopedService](requestScope)
+	if err != nil {
+		panic(err)
+	}
+
+	_, rootCanResolveRequest := dix.ResolveOptionalAs[requestContext](rt.Container())
 
 	printLine("runtime scope example")
 	printLine(service.Config.Name)
 	printLine(service.Request.RequestID)
-	printValues("root sees request context:", rootCanResolveRequest == nil)
+	printValues("root sees request context:", rootCanResolveRequest)
 }
 
 func stopOrPanic(rt *dix.Runtime) {

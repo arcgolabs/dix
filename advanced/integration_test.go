@@ -184,13 +184,14 @@ func TestAdvancedScopeNamedHelpers(t *testing.T) {
 		),
 	))
 
-	scope := dixadvanced.Scope(rt, "named-scope", func(injector do.Injector) {
-		dixadvanced.ProvideScopedNamed1[string, string](injector, "greeting", func(root string) string {
+	scope, err := rt.Scope("named-scope", dix.ScopeFunc(func(c *dix.Container) {
+		dix.ProvideNamed1T(c, "greeting", func(root string) string {
 			return root + "-scoped"
 		})
-	})
+	}))
+	require.NoError(t, err)
 
-	value, err := dixadvanced.ResolveScopedNamedAs[string](scope, "greeting")
+	value, err := dix.ResolveNamedAs[string](scope, "greeting")
 	require.NoError(t, err)
 	assert.Equal(t, "root-scoped", value)
 }
@@ -266,16 +267,17 @@ func TestAdvancedScopedProviderErr1PropagatesError(t *testing.T) {
 		),
 	))
 
-	scope := dixadvanced.Scope(rt, "err-scope", func(injector do.Injector) {
-		dixadvanced.ProvideScopedErr1(injector, func(root string) (int, error) {
+	scope, err := rt.Scope("err-scope", dix.ScopeFunc(func(c *dix.Container) {
+		dix.Provide1TErr(c, func(root string) (int, error) {
 			if root != "root" {
 				return 0, errors.New("unexpected root")
 			}
 			return 0, expectedErr
 		})
-	})
+	}))
+	require.NoError(t, err)
 
-	_, err := dixadvanced.ResolveScopedAs[int](scope)
+	_, err = dix.ResolveAs[int](scope)
 	require.Error(t, err)
 	assert.ErrorIs(t, err, expectedErr)
 }
@@ -286,13 +288,14 @@ func TestAdvancedScopedNamedProviderErr0PropagatesError(t *testing.T) {
 		dix.NewModule("scoped-named-provider-err"),
 	))
 
-	scope := dixadvanced.Scope(rt, "named-err-scope", func(injector do.Injector) {
-		dixadvanced.ProvideScopedNamedErr0(injector, "tenant.default", func() (string, error) {
+	scope, err := rt.Scope("named-err-scope", dix.ScopeFunc(func(c *dix.Container) {
+		dix.ProvideNamedTErr(c, "tenant.default", func() (string, error) {
 			return "", expectedErr
 		})
-	})
+	}))
+	require.NoError(t, err)
 
-	_, err := dixadvanced.ResolveScopedNamedAs[string](scope, "tenant.default")
+	_, err = dix.ResolveNamedAs[string](scope, "tenant.default")
 	require.Error(t, err)
 	assert.ErrorIs(t, err, expectedErr)
 }

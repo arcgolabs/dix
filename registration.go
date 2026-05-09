@@ -66,6 +66,8 @@ type HookMetadata struct {
 	Kind         HookKind
 	Dependencies *collectionlist.List[ServiceRef]
 	Name         string
+	After        *collectionlist.List[string]
+	Before       *collectionlist.List[string]
 	Priority     int
 	Parallel     bool
 	Timeout      time.Duration
@@ -163,6 +165,8 @@ func normalizeHookMetadata(meta HookMetadata) HookMetadata {
 		meta.Label = "Hook"
 	}
 	meta.Dependencies = normalizeServiceRefs(meta.Dependencies)
+	meta.After = normalizeHookNames(meta.After)
+	meta.Before = normalizeHookNames(meta.Before)
 	return meta
 }
 
@@ -191,6 +195,20 @@ func normalizeContributionRefs(refs *collectionlist.List[ContributionRef]) *coll
 	refs.Range(func(_ int, ref ContributionRef) bool {
 		if ref.Target.Name != "" && ref.Service.Name != "" {
 			filtered.Add(ref)
+		}
+		return true
+	})
+	return filtered
+}
+
+func normalizeHookNames(names *collectionlist.List[string]) *collectionlist.List[string] {
+	if names == nil || names.Len() == 0 {
+		return collectionlist.NewList[string]()
+	}
+	filtered := collectionlist.NewListWithCapacity[string](names.Len())
+	names.Range(func(_ int, name string) bool {
+		if name != "" {
+			filtered.Add(name)
 		}
 		return true
 	})

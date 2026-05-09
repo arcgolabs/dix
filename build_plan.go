@@ -161,13 +161,23 @@ func (p *buildPlan) registerProviders(ctx context.Context, rt *Runtime, debugEna
 				)
 			}
 			provider.apply(rt.container)
+			duration := time.Since(startedAt)
+			rt.emitProvider(ctx, ProviderEvent{
+				Meta:      rt.Meta(),
+				Profile:   rt.Profile(),
+				Module:    mod.name,
+				Label:     provider.meta.Label,
+				Service:   provider.meta.Output.Name,
+				Operation: "register",
+				Duration:  duration,
+			})
 			if debugEnabled {
 				rt.logMessage(ctx, EventLevelDebug, "provider registered",
 					"module", mod.name,
 					"label", provider.meta.Label,
 					"output", provider.meta.Output.Name,
 					"eager", provider.meta.Eager,
-					"duration", time.Since(startedAt),
+					"duration", duration,
 				)
 			}
 			return true

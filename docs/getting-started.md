@@ -258,6 +258,29 @@ fmt.Println(found, workerRuntime.ScopePath().Join(" / "))
 
 At runtime, `rt.SubAppSummaries()`, `rt.LifecycleSummary()`, `rt.IsSubApp()`, and `rt.ParentName()` expose the child app relationship without reaching into `do` internals.
 
+## Optional: request-like scopes
+
+Use `rt.Scope(...)` for request or job local values that should inherit root services without leaking scoped values back into the root runtime.
+
+```go
+requestScope, err := rt.Scope("request-42", dix.ScopeFunc(func(c *dix.Container) {
+	dix.ProvideValueT(c, RequestContext{ID: "req-42"})
+	dix.Provide2T(c, func(cfg AppConfig, req RequestContext) Handler {
+		return Handler{Config: cfg, Request: req}
+	})
+}))
+if err != nil {
+	panic(err)
+}
+
+handler, err := dix.ResolveAs[Handler](requestScope)
+if err != nil {
+	panic(err)
+}
+```
+
+Named scoped services can use `dix.ProvideNamedValueT(...)`, `dix.ProvideNamedT(...)`, `dix.ProvideNamed1T(...)`, and `dix.ResolveNamedAs(...)`.
+
 ## Optional: test helpers
 
 `dix/testx` contains small helpers for package tests. They fail `testing.TB` immediately on validation, build, start, or cleanup errors.
@@ -271,6 +294,15 @@ func TestApp(t *testing.T) {
 
 	require.Equal(t, dix.AppStateStarted, rt.State())
 }
+```
+
+For integration tests, derive a test app without mutating the production spec:
+
+```go
+rt := testx.BuildWith(t, app,
+	dix.TestDisableModules("db"),
+	dix.TestValue[Store](mockStore),
+)
 ```
 
 ## Optional: run with caller-owned context
@@ -290,4 +322,4 @@ if err := app.RunContext(ctx); err != nil {
 
 - Runtime metrics, Prometheus, and OTel: [Metrics and observability](./metrics-and-observability)
 - Health checks and `net/http` handlers: [Health and lifecycle](./health-and-lifecycle)
-- Advanced features (named/alias/scope/override): see [dix examples](./examples) and `dix/advanced`
+- Advanced features (named/alias/transient/override): see [dix examples](./examples) and `dix/advanced`

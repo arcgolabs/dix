@@ -67,8 +67,12 @@ func newRuntimeFromParts(
 
 	rt.container.logger = rt.logger
 	rt.container.eventLogger = rt.eventLogger
+	rt.container.meta = rt.Meta()
+	rt.container.profile = rt.Profile()
+	rt.container.emitResolveEvent = rt.emitResolve
 	rt.lifecycle.logger = rt.logger
 	rt.lifecycle.eventLogger = rt.eventLogger
+	rt.lifecycle.emitHook = rt.emitLifecycleHook
 	rt.spec.rebuildObserverDispatchers(func() *slog.Logger { return rt.logger })
 	return rt
 }

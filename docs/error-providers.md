@@ -24,8 +24,8 @@ Go does not support overloading by return type. That means `Provider0(func() T)`
 
 ## Scoped and override APIs
 
-- `dixadvanced.ProvideScopedErr0..3`
-- `dixadvanced.ProvideScopedNamedErr0..3`
+- `rt.Scope(...)`
+- `dix.ProvideNamedTErr(...)`
 - `dixadvanced.OverrideErr0..1`
 - `dixadvanced.NamedOverrideErr0..1`
 - `dixadvanced.OverrideTransientErr0..1`
@@ -48,11 +48,11 @@ app := dix.NewApp("app",
 ## Scoped example
 
 ```go
-scope := advanced.Scope(rt, "request-42", func(injector do.Injector) {
-    advanced.ProvideScopedNamedErr0(injector, "tenant.default", func() (string, error) {
+scope, err := rt.Scope("request-42", dix.ScopeFunc(func(c *dix.Container) {
+    dix.ProvideNamedTErr(c, "tenant.default", func() (string, error) {
         return resolveTenantFromRequest()
     })
-})
+}))
 ```
 
 ## Override example

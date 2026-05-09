@@ -78,6 +78,12 @@ func NewObserver(obs observabilityx.Observability, opts ...Option) dix.Observer 
 		healthCheckTotal: normalized.Counter(counterSpec(cfg.metricPrefix, "health_check_total", "Total number of health checks.", "app", "profile", "version", "kind", "result", "check")),
 		healthDurationMS: normalized.Histogram(histogramSpec(cfg.metricPrefix, "health_check_duration_ms", "Health check duration in milliseconds.", "ms", "app", "profile", "version", "kind", "result", "check")),
 		stateTransition:  normalized.Counter(counterSpec(cfg.metricPrefix, "state_transition_total", "Total number of state transitions.", "app", "profile", "version", "from", "to")),
+		providerTotal:    normalized.Counter(counterSpec(cfg.metricPrefix, "provider_total", "Total number of provider operations.", "app", "profile", "version", "module", "label", "service", "op", "result")),
+		providerDuration: normalized.Histogram(histogramSpec(cfg.metricPrefix, "provider_duration_ms", "Provider operation duration in milliseconds.", "ms", "app", "profile", "version", "module", "label", "service", "op", "result")),
+		resolveTotal:     normalized.Counter(counterSpec(cfg.metricPrefix, "resolve_total", "Total number of service resolution operations.", "app", "profile", "version", "service", "op", "result")),
+		resolveDuration:  normalized.Histogram(histogramSpec(cfg.metricPrefix, "resolve_duration_ms", "Service resolution duration in milliseconds.", "ms", "app", "profile", "version", "service", "op", "result")),
+		hookTotal:        normalized.Counter(counterSpec(cfg.metricPrefix, "lifecycle_hook_total", "Total number of lifecycle hook executions.", "app", "profile", "version", "kind", "name", "label", "result")),
+		hookDuration:     normalized.Histogram(histogramSpec(cfg.metricPrefix, "lifecycle_hook_duration_ms", "Lifecycle hook duration in milliseconds.", "ms", "app", "profile", "version", "kind", "name", "label", "result")),
 	}
 }
 
@@ -108,6 +114,12 @@ type observer struct {
 	healthCheckTotal observabilityx.Counter
 	healthDurationMS observabilityx.Histogram
 	stateTransition  observabilityx.Counter
+	providerTotal    observabilityx.Counter
+	providerDuration observabilityx.Histogram
+	resolveTotal     observabilityx.Counter
+	resolveDuration  observabilityx.Histogram
+	hookTotal        observabilityx.Counter
+	hookDuration     observabilityx.Histogram
 }
 
 func (o *observer) OnBuild(ctx context.Context, event dix.BuildEvent) {
@@ -163,6 +175,39 @@ func (o *observer) OnStateTransition(ctx context.Context, event dix.StateTransit
 		observabilityx.String("to", event.To.String()),
 	)
 	o.stateTransition.Add(ctx, 1, attrs...)
+}
+
+func (o *observer) OnProvider(ctx context.Context, event dix.ProviderEvent) {
+	attrs := o.withResultAttrs(event.Meta, event.Profile, event.Err)
+	attrs = append(attrs,
+		observabilityx.String("module", event.Module),
+		observabilityx.String("label", event.Label),
+		observabilityx.String("service", event.Service),
+		observabilityx.String("op", event.Operation),
+	)
+	o.providerTotal.Add(ctx, 1, attrs...)
+	o.providerDuration.Record(ctx, durationMS(event.Duration), attrs...)
+}
+
+func (o *observer) OnResolve(ctx context.Context, event dix.ResolveEvent) {
+	attrs := o.withResultAttrs(event.Meta, event.Profile, event.Err)
+	attrs = append(attrs,
+		observabilityx.String("service", event.Service),
+		observabilityx.String("op", event.Operation),
+	)
+	o.resolveTotal.Add(ctx, 1, attrs...)
+	o.resolveDuration.Record(ctx, durationMS(event.Duration), attrs...)
+}
+
+func (o *observer) OnLifecycleHook(ctx context.Context, event dix.LifecycleHookEvent) {
+	attrs := o.withResultAttrs(event.Meta, event.Profile, event.Err)
+	attrs = append(attrs,
+		observabilityx.String("kind", string(event.Kind)),
+		observabilityx.String("name", event.Name),
+		observabilityx.String("label", event.Label),
+	)
+	o.hookTotal.Add(ctx, 1, attrs...)
+	o.hookDuration.Record(ctx, durationMS(event.Duration), attrs...)
 }
 
 func (o *observer) commonAttrs(meta dix.AppMeta, profile dix.Profile) []observabilityx.Attribute {

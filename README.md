@@ -52,11 +52,12 @@ go get github.com/arcgolabs/dix@latest
 - `dix.WithModuleProviders(...)`, `dix.WithModuleHooks(...)`, `dix.WithModuleImports(...)`
 - `dix.WithModuleProvider(...)`, `dix.WithModuleHook(...)`, `dix.WithModuleImport(...)`
 - `dix.Value(...)`, `dix.Invoke(...)`, `dix.ProviderN(...)`, `dix.OnStart(...)`, `dix.OnStop(...)`
-- `dix.ResolveAs(...)`, `dix.ResolveAsContext(ctx, ...)`
+- `dix.ResolveAs(...)`, `dix.ResolveNamedAs(...)`, `dix.ResolveAsContext(ctx, ...)`
 - `dix.Eager(...)`
-- `dix.LifecycleName(...)`, `dix.LifecyclePriority(...)`, `dix.LifecycleParallel(...)`, `dix.LifecycleTimeout(...)`, `dix.LifecycleConcurrency(...)`
+- `dix.LifecycleName(...)`, `dix.LifecycleAfter(...)`, `dix.LifecycleBefore(...)`, `dix.LifecyclePriority(...)`, `dix.LifecycleParallel(...)`, `dix.LifecycleTimeout(...)`, `dix.LifecycleConcurrency(...)`
 - `dix.As[T]()`, `dix.Into[T](...)`, `dix.Key(...)`, `dix.Order(...)`, `dix.ContributeN[T](...)`
 - `dix.SubApps(...)`, `dix.NewSubApp(...)`, `app.DependencyGraph()`, `app.Explain()`
+- `rt.Scope(...)`, `dix.ScopeFunc(...)`, `dix.ProvideNamedValueT(...)`, `dix.ProvideNamedT(...)`, `dix.ProvideNamed1T(...)`
 - `app.Test(...)`, `dix.TestValue(...)`, `dix.TestProviders(...)`, `dix.TestDisableModules(...)`
 - `rt.LifecycleSummary()`, `rt.SubAppSummaries()`, `rt.ScopePath()`
 - `advanced.Named(...)`, `advanced.Alias(...)`, `advanced.NamedAlias(...)`, `advanced.Transient(...)`, `advanced.Override(...)`
@@ -75,7 +76,7 @@ go get github.com/arcgolabs/dix@latest
 - For zero-dependency registrations, `Value(...)` and `Invoke(...)` reduce the remaining boilerplate on the core path.
 - Use `As[T]` for a unique typed alias, and `Into[T]` / `ContributeN[T]` for multi-binding collection roles. Collection consumers can depend directly on `[]T`, `collectionx.List[T]`, `map[string]T`, `collectionx.Map[string, T]`, or `collectionx.OrderedMap[string, T]`.
 - Use `SubApps(...)` when a child app should share parent services but keep its own modules, lifecycle hooks, and child `do` scope.
-- Lifecycle hooks start by ascending priority and stop by descending priority. Hooks remain serial unless `LifecycleParallel()` is set, in which case adjacent hooks with the same priority can run through the configured lifecycle worker pool. Use `LifecycleTimeout(...)` to pass an individual hook a deadline-aware context.
+- Lifecycle hooks start by ascending priority and stop by descending priority. Use `LifecycleAfter(...)` / `LifecycleBefore(...)` for named hook dependencies; priority and declaration order remain the tie-breakers. Hooks remain serial unless `LifecycleParallel()` is set, in which case adjacent unconstrained hooks with the same priority can run through the configured lifecycle worker pool. Use `LifecycleTimeout(...)` to pass an individual hook a deadline-aware context.
 - In `dix/advanced`, the shorter aliases such as `Named(...)`, `Alias(...)`, `Transient(...)`, and `Override(...)` keep the same semantics as the older explicit names.
 - When you want the common build-then-start flow, prefer `app.Start(ctx)`; use `app.Build()` when you need an explicit pre-start runtime handle.
 - When the caller owns cancellation or shutdown timing, prefer `app.RunContext(ctx)` over `app.Run()`.
@@ -117,15 +118,15 @@ app := dix.New("worker",
 	dix.Modules(dix.NewModule("runtime",
 		dix.Hooks(
 			dix.OnStart0(startCache, dix.LifecycleName("cache"), dix.LifecyclePriority(10), dix.LifecycleParallel()),
-			dix.OnStart0(startQueue, dix.LifecycleName("queue"), dix.LifecyclePriority(10), dix.LifecycleParallel(), dix.LifecycleTimeout(10 * time.Second)),
+			dix.OnStart0(startQueue, dix.LifecycleName("queue"), dix.LifecycleAfter("cache"), dix.LifecyclePriority(10), dix.LifecycleParallel(), dix.LifecycleTimeout(10 * time.Second)),
 			dix.OnStop0(stopQueue, dix.LifecycleName("queue"), dix.LifecyclePriority(10), dix.LifecycleParallel()),
-			dix.OnStop0(stopCache, dix.LifecycleName("cache"), dix.LifecyclePriority(10), dix.LifecycleParallel()),
+			dix.OnStop0(stopCache, dix.LifecycleName("cache"), dix.LifecycleAfter("queue"), dix.LifecyclePriority(10), dix.LifecycleParallel()),
 		),
 	)),
 )
 ```
 
-Build, start, stop, setup, invoke, provider construction, and explicit `ResolveAsContext` diagnostics include duration fields when debug logging is enabled.
+Build, start, stop, setup, invoke, provider construction, and explicit `ResolveAsContext` diagnostics include duration fields when debug logging is enabled. Observers can also implement `ProviderObserver`, `ResolveObserver`, or `LifecycleHookObserver` for structured diagnostic events suitable for metrics and tracing.
 
 ## Eager providers
 

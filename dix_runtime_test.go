@@ -308,6 +308,63 @@ func TestLifecyclePriorityOrdersStartAndStop(t *testing.T) {
 	assert.Equal(t, []string{"start:early", "start:late", "stop:late", "stop:early"}, events)
 }
 
+func TestLifecycleDependenciesOverridePriorityTieBreakers(t *testing.T) {
+	var events []string
+	record := func(event string) func(context.Context) error {
+		return func(context.Context) error {
+			events = append(events, event)
+			return nil
+		}
+	}
+
+	app := dix.New("lifecycle-dependencies",
+		dix.Modules(
+			dix.NewModule("lifecycle",
+				dix.Hooks(
+					dix.OnStart0(record("migrate"), dix.LifecycleName("migrate"), dix.LifecyclePriority(20)),
+					dix.OnStart0(record("db"), dix.LifecycleName("db"), dix.LifecyclePriority(30)),
+					dix.OnStart0(record("cache"), dix.LifecycleName("cache"), dix.LifecyclePriority(0), dix.LifecycleAfter("db")),
+					dix.OnStart0(record("metrics"), dix.LifecycleName("metrics"), dix.LifecyclePriority(100), dix.LifecycleBefore("migrate")),
+				),
+			),
+		),
+	)
+
+	rt := buildRuntime(t, app)
+	summary := rt.LifecycleSummary()
+	require.Equal(t, 4, summary.StartHooks)
+	assert.Equal(t, []string{"db", "cache", "metrics", "migrate"}, lifecycleSummaryNames(summary.Start))
+
+	require.NoError(t, rt.Start(context.Background()))
+	assert.Equal(t, []string{"db", "cache", "metrics", "migrate"}, events)
+}
+
+func TestLifecycleDependencyCycleFailsBuild(t *testing.T) {
+	app := dix.New("lifecycle-cycle",
+		dix.Modules(
+			dix.NewModule("lifecycle",
+				dix.Hooks(
+					dix.OnStart0(func(context.Context) error { return nil }, dix.LifecycleName("first"), dix.LifecycleAfter("second")),
+					dix.OnStart0(func(context.Context) error { return nil }, dix.LifecycleName("second"), dix.LifecycleAfter("first")),
+				),
+			),
+		),
+	)
+
+	_, err := app.Build()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "dependency cycle")
+}
+
+func lifecycleSummaryNames(hooks *collectionlist.List[dix.LifecycleHookSummary]) []string {
+	if hooks == nil {
+		return nil
+	}
+	return collectionlist.MapList(hooks, func(_ int, hook dix.LifecycleHookSummary) string {
+		return hook.Name
+	}).Values()
+}
+
 func TestLifecycleParallelHooksRunTogether(t *testing.T) {
 	started := make(chan string, 2)
 	release := make(chan struct{})
