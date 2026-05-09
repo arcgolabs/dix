@@ -2,7 +2,8 @@ package dix
 
 import (
 	"context"
-	"fmt"
+	"strconv"
+
 	collectionlist "github.com/arcgolabs/collectionx/list"
 	"log/slog"
 )
@@ -241,7 +242,7 @@ func eventFields(args ...any) *collectionlist.List[EventField] {
 
 	fields := collectionlist.NewListWithCapacity[EventField]((len(args) + 1) / 2)
 	for i := 0; i < len(args); i += 2 {
-		key := fmt.Sprintf("arg_%d", i)
+		key := "arg_" + strconv.Itoa(i)
 		if name, ok := args[i].(string); ok && name != "" {
 			key = name
 		}
@@ -260,9 +261,12 @@ func eventFieldArgs(fields *collectionlist.List[EventField]) []any {
 	if fields == nil || fields.Len() == 0 {
 		return nil
 	}
-	return collectionlist.FlatMapList(fields, func(_ int, field EventField) []any {
-		return []any{field.Key, field.Value}
-	}).Values()
+	args := make([]any, 0, fields.Len()*2)
+	fields.Range(func(_ int, field EventField) bool {
+		args = append(args, field.Key, field.Value)
+		return true
+	})
+	return args
 }
 
 func slogLevelFromEvent(level EventLevel) slog.Level {

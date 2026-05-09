@@ -41,7 +41,7 @@ func (p *buildPlan) prepareRuntimeBuild(ctx context.Context, rt *Runtime) (bool,
 	} else {
 		p.registerProviders(ctx, rt, debugEnabled)
 	}
-	newContributionPlan(p.modules).register(ctx, rt, debugEnabled)
+	p.contributionPlan().register(ctx, rt, debugEnabled)
 	return debugEnabled, nil
 }
 

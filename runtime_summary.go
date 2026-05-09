@@ -90,11 +90,7 @@ func (r *Runtime) ScopePath() *collectionlist.List[string] {
 	for plan := r.plan; plan != nil && plan.spec != nil; plan = plan.parent {
 		names.Add(plan.spec.meta.Name)
 	}
-	values := names.Values()
-	for i, j := 0, len(values)-1; i < j; i, j = i+1, j-1 {
-		values[i], values[j] = values[j], values[i]
-	}
-	return collectionlist.NewListWithCapacity[string](len(values), values...)
+	return names.Reverse()
 }
 
 // SubAppSummaries returns built child runtime summaries in declaration order.

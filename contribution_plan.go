@@ -127,7 +127,7 @@ func (p contributionPlan) register(ctx context.Context, rt *Runtime, debugEnable
 		if !found {
 			return true
 		}
-		contributionValues := p.contributions.GetCopy(target)
+		contributionValues := p.contributions.Get(target)
 		contributions := collectionlist.NewListWithCapacity(len(contributionValues), contributionValues...)
 		if debugEnabled {
 			rt.logMessage(ctx, EventLevelDebug, "registering contribution collection",

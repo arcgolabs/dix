@@ -51,6 +51,36 @@ func TestAppDependencyGraphIncludesSubAppsAndOperations(t *testing.T) {
 	require.True(t, graphHasEdge(explanation.Graph, dix.DependencyGraphEdgeSubApp))
 	require.True(t, graphHasEdge(explanation.Graph, dix.DependencyGraphEdgeConsumes))
 	require.True(t, graphHasNode(explanation.Graph, dix.DependencyGraphNodeService, dix.TypedService[graphConfig]().Name))
+
+	serviceKey := dix.DependencyGraphServiceKey{App: "root", Service: dix.TypedService[graphConfig]().Name}
+	serviceIndex := explanation.Graph.ServiceNodeIndex()
+	serviceNodeID, found := serviceIndex.GetByKey(serviceKey)
+	require.True(t, found)
+	indexedService, found := serviceIndex.GetByValue(serviceNodeID)
+	require.True(t, found)
+	require.Equal(t, serviceKey, indexedService)
+
+	moduleKey := dix.DependencyGraphModuleKey{App: "root", Module: "infra"}
+	moduleIndex := explanation.Graph.ModuleNodeIndex()
+	moduleNodeID, found := moduleIndex.GetByKey(moduleKey)
+	require.True(t, found)
+	indexedModule, found := moduleIndex.GetByValue(moduleNodeID)
+	require.True(t, found)
+	require.Equal(t, moduleKey, indexedModule)
+
+	relations, found := explanation.Graph.RelationTable().Get(
+		moduleKey,
+		serviceKey,
+	)
+	require.True(t, found)
+	require.True(t, relations.Contains(dix.DependencyGraphEdgeProvides))
+
+	relations, found = explanation.Graph.RelationTable().Get(
+		dix.DependencyGraphModuleKey{App: "root", Module: "service"},
+		serviceKey,
+	)
+	require.True(t, found)
+	require.True(t, relations.Contains(dix.DependencyGraphEdgeConsumes))
 }
 
 func TestValidationMissingDependencyIncludesAvailableServices(t *testing.T) {

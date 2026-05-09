@@ -89,6 +89,24 @@ func LifecycleConcurrency(concurrency int) AppOption {
 	return WithLifecycleConcurrency(concurrency)
 }
 
+// WithRecentEvents enables an in-memory ring buffer for recent runtime events.
+func WithRecentEvents(capacity int) AppOption {
+	return func(spec *appSpec) {
+		if spec == nil {
+			return
+		}
+		if capacity < 0 {
+			capacity = 0
+		}
+		spec.eventBufferCapacity = capacity
+	}
+}
+
+// RecentEvents enables an in-memory ring buffer for recent runtime events.
+func RecentEvents(capacity int) AppOption {
+	return WithRecentEvents(capacity)
+}
+
 func defaultLogger() *slog.Logger {
 	return slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{}))
 }

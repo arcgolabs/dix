@@ -77,6 +77,30 @@ func (r *Runtime) EventLogger() EventLogger {
 	return r.eventLogger
 }
 
+// EventRecorder returns the runtime's recent-event recorder when enabled.
+func (r *Runtime) EventRecorder() *EventRecorder {
+	if r == nil {
+		return nil
+	}
+	return r.eventRecorder
+}
+
+// RecentEvents returns recent runtime events in FIFO order.
+func (r *Runtime) RecentEvents() *collectionlist.List[EventRecord] {
+	if r == nil || r.eventRecorder == nil {
+		return collectionlist.NewList[EventRecord]()
+	}
+	return r.eventRecorder.Events()
+}
+
+// RecentEventSnapshot returns a ring-buffer snapshot of recent runtime events.
+func (r *Runtime) RecentEventSnapshot() *collectionlist.RingBuffer[EventRecord] {
+	if r == nil || r.eventRecorder == nil {
+		return collectionlist.NewRingBuffer[EventRecord](defaultEventRecorderCapacity)
+	}
+	return r.eventRecorder.Snapshot()
+}
+
 // Meta returns the runtime application metadata.
 func (r *Runtime) Meta() AppMeta {
 	if r == nil || r.spec == nil {

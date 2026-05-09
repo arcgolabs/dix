@@ -395,6 +395,61 @@ func TestOptionalObserverReceivesDetailedEvents(t *testing.T) {
 	require.Equal(t, dix.HookKindStop, hooks[len(hooks)-1].Kind)
 }
 
+func TestRuntimeRecentEventsUsesRingBuffer(t *testing.T) {
+	app := dix.New("recent-events",
+		dix.RecentEvents(16),
+		dix.Modules(
+			dix.NewModule("events",
+				dix.Providers(dix.Value("value")),
+				dix.Hooks(
+					dix.OnStart0(func(context.Context) error { return nil }, dix.LifecycleName("start")),
+					dix.OnStop0(func(context.Context) error { return nil }, dix.LifecycleName("stop")),
+				),
+			),
+		),
+	)
+
+	rt, err := app.Build()
+	require.NoError(t, err)
+	require.NotNil(t, rt.EventRecorder())
+	require.Equal(t, 16, rt.EventRecorder().Capacity())
+
+	require.NoError(t, rt.Start(context.Background()))
+	_, err = dix.ResolveAsContext[string](context.Background(), rt.Container())
+	require.NoError(t, err)
+	require.NoError(t, rt.Stop(context.Background()))
+
+	events := rt.RecentEvents()
+	require.LessOrEqual(t, events.Len(), 16)
+	require.True(t, eventRecordsContain(events, func(event dix.Event) bool {
+		_, ok := event.(dix.BuildEvent)
+		return ok
+	}))
+	require.True(t, eventRecordsContain(events, func(event dix.Event) bool {
+		_, ok := event.(dix.StartEvent)
+		return ok
+	}))
+	require.True(t, eventRecordsContain(events, func(event dix.Event) bool {
+		_, ok := event.(dix.StopEvent)
+		return ok
+	}))
+	require.True(t, eventRecordsContain(events, func(event dix.Event) bool {
+		_, ok := event.(dix.ResolveEvent)
+		return ok
+	}))
+	require.Equal(t, events.Len(), rt.EventRecorder().Snapshot().Len())
+	require.Equal(t, events.Len(), rt.RecentEventSnapshot().Len())
+}
+
+func eventRecordsContain(records *collectionlist.List[dix.EventRecord], match func(dix.Event) bool) bool {
+	found := false
+	records.Range(func(_ int, record dix.EventRecord) bool {
+		found = match(record.Event)
+		return !found
+	})
+	return found
+}
+
 type blockingObserver struct {
 	invoked chan struct{}
 	release chan struct{}

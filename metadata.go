@@ -13,25 +13,29 @@ func validateTypedGraphReportWithInherited(plan *buildPlan, inherited *collectio
 	}
 
 	state := newValidationState(
-		!plan.declaresProviderOutput(TypedService[*slog.Logger]()),
-		!plan.declaresProviderOutput(TypedService[AppMeta]()),
-		!plan.declaresProviderOutput(TypedService[Profile]()),
+		!declaresProviderOutputType[*slog.Logger](plan),
+		!declaresProviderOutputType[AppMeta](plan),
+		!declaresProviderOutputType[Profile](plan),
 		inherited,
 	)
-	collectDeclaredOutputs(plan.modules, state)
+	collectDeclaredOutputs(plan, state)
 	validateDeclaredDependencies(plan.modules, state)
 
 	return ValidationReport{
-		Errors:   collectionlist.NewListWithCapacity(state.err.Len(), state.err.Values()...),
-		Warnings: collectionlist.NewListWithCapacity(state.warnings.Len(), state.warnings.Values()...),
+		Errors:        collectionlist.NewListWithCapacity(state.err.Len(), state.err.Values()...),
+		Warnings:      collectionlist.NewListWithCapacity(state.warnings.Len(), state.warnings.Values()...),
+		WarningCounts: cloneMultiSet(state.warningCounts),
+		ServiceCounts: cloneMultiSet(state.serviceCounts),
 	}
 }
 
 type validationState struct {
-	known     *collectionset.Set[string]
-	inherited *collectionset.Set[string]
-	err       *collectionlist.List[error]
-	warnings  *collectionlist.List[ValidationWarning]
+	known         *collectionset.Set[string]
+	inherited     *collectionset.Set[string]
+	err           *collectionlist.List[error]
+	warnings      *collectionlist.List[ValidationWarning]
+	warningCounts *collectionset.MultiSet[ValidationWarningKind]
+	serviceCounts *collectionset.MultiSet[string]
 }
 
 func newValidationState(
@@ -40,42 +44,33 @@ func newValidationState(
 	includeDefaultProfile bool,
 	inherited *collectionset.Set[string],
 ) *validationState {
-	known := collectionset.NewSetWithCapacity[string](64)
+	state := &validationState{
+		known:         collectionset.NewSetWithCapacity[string](64),
+		inherited:     cloneServiceNameSet(inherited),
+		err:           collectionlist.NewListWithCapacity[error](4),
+		warnings:      collectionlist.NewListWithCapacity[ValidationWarning](2),
+		warningCounts: collectionset.NewMultiSet[ValidationWarningKind](),
+		serviceCounts: collectionset.NewMultiSet[string](),
+	}
 	if includeDefaultLogger {
-		known.Add(serviceNameOfSpec[*slog.Logger](nil))
+		state.declareService(serviceNameOfSpec[*slog.Logger](nil))
 	}
 	if includeDefaultAppMeta {
-		known.Add(serviceNameOfSpec[AppMeta](nil))
+		state.declareService(serviceNameOfSpec[AppMeta](nil))
 	}
 	if includeDefaultProfile {
-		known.Add(serviceNameOfSpec[Profile](nil))
+		state.declareService(serviceNameOfSpec[Profile](nil))
 	}
 
-	return &validationState{
-		known:     known,
-		inherited: cloneServiceNameSet(inherited),
-		err:       collectionlist.NewListWithCapacity[error](4),
-		warnings:  collectionlist.NewListWithCapacity[ValidationWarning](2),
-	}
+	return state
 }
 
-func declaredServiceNames(plan *buildPlan) *collectionset.Set[string] {
+func collectDeclaredOutputs(plan *buildPlan, state *validationState) {
 	if plan == nil {
-		return collectionset.NewSet[string]()
+		return
 	}
-	state := newValidationState(
-		!plan.declaresProviderOutput(TypedService[*slog.Logger]()),
-		!plan.declaresProviderOutput(TypedService[AppMeta]()),
-		!plan.declaresProviderOutput(TypedService[Profile]()),
-		nil,
-	)
-	collectDeclaredOutputs(plan.modules, state)
-	return state.known
-}
-
-func collectDeclaredOutputs(modules *collectionlist.List[*moduleSpec], state *validationState) {
-	collectExplicitOutputs(modules, state)
-	collectContributionCollectionOutputs(modules, state)
+	collectExplicitOutputs(plan.modules, state)
+	collectContributionCollectionOutputs(plan.contributionPlan(), state)
 }
 
 func collectExplicitOutputs(modules *collectionlist.List[*moduleSpec], state *validationState) {
@@ -110,33 +105,29 @@ func collectProviderOutput(moduleName string, meta ProviderMetadata, state *vali
 	if meta.Output.Name == "" {
 		return
 	}
-	if state.known.Contains(meta.Output.Name) {
+	if !state.declareService(meta.Output.Name) {
 		state.err.Add(oops.In("dix").
 			With("op", "validate_provider_output", "module", moduleName, "label", meta.Label, "service", meta.Output.Name).
 			Errorf("duplicate provider output `%s` in module `%s` via %s", meta.Output.Name, moduleName, meta.Label))
 		return
 	}
-	state.known.Add(meta.Output.Name)
 }
 
 func collectProviderAliases(moduleName string, meta ProviderMetadata, state *validationState) {
 	meta.Aliases.Range(func(_ int, alias ServiceRef) bool {
-		if state.known.Contains(alias.Name) {
+		if !state.declareService(alias.Name) {
 			state.err.Add(oops.In("dix").
 				With("op", "validate_provider_alias", "module", moduleName, "label", meta.Label, "service", alias.Name).
 				Errorf("duplicate provider alias `%s` in module `%s` via %s", alias.Name, moduleName, meta.Label))
 			return true
 		}
-		state.known.Add(alias.Name)
 		return true
 	})
 }
 
-func collectContributionCollectionOutputs(modules *collectionlist.List[*moduleSpec], state *validationState) {
-	newContributionPlan(modules).syntheticOutputs().Range(func(_ int, output ServiceRef) bool {
-		if !state.known.Contains(output.Name) {
-			state.known.Add(output.Name)
-		}
+func collectContributionCollectionOutputs(plan contributionPlan, state *validationState) {
+	plan.syntheticOutputs().Range(func(_ int, output ServiceRef) bool {
+		state.declareService(output.Name)
 		return true
 	})
 }
@@ -145,13 +136,12 @@ func collectSetupOutputs(mod *moduleSpec, state *validationState) {
 	mod.setups.Range(func(_ int, setup SetupFunc) bool {
 		meta := setup.meta
 		meta.Provides.Range(func(_ int, provide ServiceRef) bool {
-			if state.known.Contains(provide.Name) {
+			if !state.declareService(provide.Name) {
 				state.err.Add(oops.In("dix").
 					With("op", "validate_setup_output", "module", mod.name, "label", meta.Label, "service", provide.Name).
 					Errorf("duplicate setup output `%s` in module `%s` via %s", provide.Name, mod.name, meta.Label))
 				return true
 			}
-			state.known.Add(provide.Name)
 			return true
 		})
 		if meta.Raw && meta.Provides.Len() == 0 && meta.Overrides.Len() == 0 && meta.GraphMutation {
@@ -250,6 +240,19 @@ func (s *validationState) addWarning(kind ValidationWarningKind, moduleName, lab
 		Label:   label,
 		Details: details,
 	})
+	s.warningCounts.Add(kind)
+}
+
+func (s *validationState) declareService(name string) bool {
+	if s == nil || name == "" {
+		return true
+	}
+	s.serviceCounts.Add(name)
+	if s.known.Contains(name) {
+		return false
+	}
+	s.known.Add(name)
+	return true
 }
 
 func (s *validationState) validateDeps(moduleName, kind, label string, deps *collectionlist.List[ServiceRef]) {

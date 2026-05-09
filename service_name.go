@@ -2,13 +2,13 @@ package dix
 
 import (
 	"reflect"
-	"sync"
 
+	collectionmapping "github.com/arcgolabs/collectionx/mapping"
 	typetostring "github.com/samber/go-type-to-string"
 )
 
 type serviceNamer struct {
-	cache sync.Map
+	cache collectionmapping.ConcurrentMap[reflect.Type, string]
 }
 
 func newServiceNamer() *serviceNamer {
@@ -37,18 +37,12 @@ func (n *serviceNamer) Name(typ reflect.Type) string {
 	if typ == nil {
 		return ""
 	}
-	if name, ok := n.cache.Load(typ); ok {
-		if value, typeOK := name.(string); typeOK {
-			return value
-		}
+	if name, found := n.cache.Get(typ); found {
+		return name
 	}
-
 	name := typetostring.GetReflectType(typ)
-	actual, _ := n.cache.LoadOrStore(typ, name)
-	if value, ok := actual.(string); ok {
-		return value
-	}
-	return name
+	actual, _ := n.cache.GetOrStore(typ, name)
+	return actual
 }
 
 func serviceTypeName(typ reflect.Type) string {

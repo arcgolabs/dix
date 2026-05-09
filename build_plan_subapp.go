@@ -82,7 +82,7 @@ func resolveBuildProfileWithParent(ctx context.Context, app *App, parent *buildP
 	}
 	plan.parent = parent
 	plan.inheritedServices = inheritedServicesForParent(parent)
-	if !plan.declaresProviderOutput(TypedService[Profile]()) {
+	if !declaresProviderOutputType[Profile](plan) {
 		return defaultProfile, nil
 	}
 	if reportErr := validateTypedGraphReportWithInherited(plan, plan.inheritedServices).Err(); reportErr != nil {
@@ -107,7 +107,7 @@ func resolveDeclaredBuildProfile(ctx context.Context, app *App, plan, parent *bu
 	}
 	plan.registerRuntimeCoreServices(rt)
 	plan.registerProviders(ctx, rt, false)
-	newContributionPlan(plan.modules).register(ctx, rt, false)
+	plan.contributionPlan().register(ctx, rt, false)
 
 	profile, resolveErr := resolveProfileFromRuntime(ctx, app, rt)
 	if cleanupParent == nil {
@@ -155,7 +155,7 @@ func buildRootProfileResolutionRuntime(ctx context.Context, plan *buildPlan) (*R
 	rt := newRuntime(plan.spec, plan)
 	plan.registerRuntimeCoreServices(rt)
 	plan.registerProviders(ctx, rt, false)
-	newContributionPlan(plan.modules).register(ctx, rt, false)
+	plan.contributionPlan().register(ctx, rt, false)
 	return rt, func() error {
 		report := rt.container.ShutdownReport(ctx)
 		if report == nil || len(report.Errors) == 0 {
@@ -180,7 +180,7 @@ func buildChildProfileResolutionRuntime(ctx context.Context, plan *buildPlan) (*
 	}
 	plan.registerRuntimeCoreServices(rt)
 	plan.registerProviders(ctx, rt, false)
-	newContributionPlan(plan.modules).register(ctx, rt, false)
+	plan.contributionPlan().register(ctx, rt, false)
 	return rt, cleanupParent, nil
 }
 

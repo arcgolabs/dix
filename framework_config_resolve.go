@@ -10,6 +10,7 @@ func applyRuntimeEventLogger(rt *Runtime, logger EventLogger) {
 	if rt == nil || logger == nil {
 		return
 	}
+	logger = newRecordingEventLogger(rt.eventRecorder, logger)
 	rt.eventLogger = logger
 	rt.container.eventLogger = logger
 	rt.lifecycle.eventLogger = logger

@@ -54,15 +54,18 @@ func newRuntimeFromParts(
 	logger *slog.Logger,
 	eventLogger EventLogger,
 ) *Runtime {
+	eventRecorder := newRuntimeEventRecorder(spec)
+	eventLogger = newRecordingEventLogger(eventRecorder, eventLogger)
 	rt := &Runtime{
-		spec:        spec,
-		plan:        plan,
-		container:   container,
-		lifecycle:   newLifecycle(logger, lifecycleConcurrency(spec)),
-		logger:      logger,
-		eventLogger: eventLogger,
-		state:       AppStateCreated,
-		subapps:     collectionlist.NewList[*Runtime](),
+		spec:          spec,
+		plan:          plan,
+		container:     container,
+		lifecycle:     newLifecycle(logger, lifecycleConcurrency(spec)),
+		logger:        logger,
+		eventLogger:   eventLogger,
+		eventRecorder: eventRecorder,
+		state:         AppStateCreated,
+		subapps:       collectionlist.NewList[*Runtime](),
 	}
 
 	rt.container.logger = rt.logger
@@ -75,6 +78,13 @@ func newRuntimeFromParts(
 	rt.lifecycle.emitHook = rt.emitLifecycleHook
 	rt.spec.rebuildObserverDispatchers(func() *slog.Logger { return rt.logger })
 	return rt
+}
+
+func newRuntimeEventRecorder(spec *appSpec) *EventRecorder {
+	if spec == nil || spec.eventBufferCapacity <= 0 {
+		return nil
+	}
+	return NewEventRecorder(spec.eventBufferCapacity)
 }
 
 func lifecycleConcurrency(spec *appSpec) int {

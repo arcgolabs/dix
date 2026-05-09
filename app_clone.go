@@ -1,6 +1,9 @@
 package dix
 
-import collectionlist "github.com/arcgolabs/collectionx/list"
+import (
+	collectionlist "github.com/arcgolabs/collectionx/list"
+	collectionmapping "github.com/arcgolabs/collectionx/mapping"
+)
 
 func cloneAppSpecForMutation(spec *appSpec) *appSpec {
 	if spec == nil {
@@ -21,7 +24,7 @@ func cloneModuleList(modules *collectionlist.List[Module]) *collectionlist.List[
 	if modules == nil || modules.Len() == 0 {
 		return collectionlist.NewList[Module]()
 	}
-	memo := make(map[*moduleSpec]*moduleSpec, modules.Len())
+	memo := collectionmapping.NewMapWithCapacity[*moduleSpec, *moduleSpec](modules.Len())
 	out := collectionlist.NewListWithCapacity[Module](modules.Len())
 	modules.Range(func(_ int, module Module) bool {
 		out.Add(Module{spec: cloneModuleSpec(module.spec, memo)})
@@ -30,16 +33,16 @@ func cloneModuleList(modules *collectionlist.List[Module]) *collectionlist.List[
 	return out
 }
 
-func cloneModuleSpec(spec *moduleSpec, memo map[*moduleSpec]*moduleSpec) *moduleSpec {
+func cloneModuleSpec(spec *moduleSpec, memo *collectionmapping.Map[*moduleSpec, *moduleSpec]) *moduleSpec {
 	if spec == nil {
 		return nil
 	}
-	if cloned, ok := memo[spec]; ok {
+	if cloned, ok := memo.Get(spec); ok {
 		return cloned
 	}
 
 	cloned := *spec
-	memo[spec] = &cloned
+	memo.Set(spec, &cloned)
 	cloned.providers = spec.providers.Clone()
 	cloned.setups = spec.setups.Clone()
 	cloned.invokes = spec.invokes.Clone()

@@ -4,39 +4,30 @@ import (
 	collectionlist "github.com/arcgolabs/collectionx/list"
 )
 
-func countModules(modules *collectionlist.List[*moduleSpec]) int {
+type moduleStats struct {
+	modules   int
+	providers int
+	hooks     int
+	setups    int
+	invokes   int
+}
+
+func countModuleStats(modules *collectionlist.List[*moduleSpec]) moduleStats {
 	if modules == nil {
-		return 0
+		return moduleStats{}
 	}
-	return modules.Len()
-}
-
-func countModuleProviders(modules *collectionlist.List[*moduleSpec]) int {
-	return sumModuleCounts(modules, func(mod *moduleSpec) int { return mod.providers.Len() })
-}
-
-func countModuleHooks(modules *collectionlist.List[*moduleSpec]) int {
-	return sumModuleCounts(modules, func(mod *moduleSpec) int { return mod.hooks.Len() })
-}
-
-func countModuleSetups(modules *collectionlist.List[*moduleSpec]) int {
-	return sumModuleCounts(modules, func(mod *moduleSpec) int { return mod.setups.Len() })
-}
-
-func countModuleInvokes(modules *collectionlist.List[*moduleSpec]) int {
-	return sumModuleCounts(modules, func(mod *moduleSpec) int { return mod.invokes.Len() })
-}
-
-func sumModuleCounts(modules *collectionlist.List[*moduleSpec], selector func(*moduleSpec) int) int {
-	if modules == nil || selector == nil {
-		return 0
-	}
-	return collectionlist.ReduceList(modules, 0, func(acc int, _ int, mod *moduleSpec) int {
+	stats := moduleStats{modules: modules.Len()}
+	modules.Range(func(_ int, mod *moduleSpec) bool {
 		if mod == nil {
-			return acc
+			return true
 		}
-		return acc + selector(mod)
+		stats.providers += mod.providers.Len()
+		stats.hooks += mod.hooks.Len()
+		stats.setups += mod.setups.Len()
+		stats.invokes += mod.invokes.Len()
+		return true
 	})
+	return stats
 }
 
 func serviceRefNames(refs *collectionlist.List[ServiceRef]) *collectionlist.List[string] {

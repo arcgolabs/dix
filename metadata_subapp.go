@@ -29,21 +29,19 @@ func cloneServiceNameSet(items *collectionset.Set[string]) *collectionset.Set[st
 	if items == nil {
 		return collectionset.NewSet[string]()
 	}
-	return collectionset.NewSetWithCapacity[string](items.Len(), items.Values()...)
+	return items.Clone()
 }
 
 func mergeServiceNameSets(left, right *collectionset.Set[string]) *collectionset.Set[string] {
-	merged := cloneServiceNameSet(left)
-	if right != nil {
-		merged.Add(right.Values()...)
-	}
-	return merged
+	return cloneServiceNameSet(left).Merge(right)
 }
 
 func mergeValidationReports(left, right ValidationReport) ValidationReport {
 	return ValidationReport{
-		Errors:   mergeLists(left.Errors, right.Errors),
-		Warnings: mergeLists(left.Warnings, right.Warnings),
+		Errors:        mergeLists(left.Errors, right.Errors),
+		Warnings:      mergeLists(left.Warnings, right.Warnings),
+		WarningCounts: mergeMultiSets(left.WarningCounts, right.WarningCounts),
+		ServiceCounts: mergeMultiSets(left.ServiceCounts, right.ServiceCounts),
 	}
 }
 
@@ -55,12 +53,17 @@ func mergeLists[T any](left, right *collectionlist.List[T]) *collectionlist.List
 	if right != nil {
 		size += right.Len()
 	}
-	merged := collectionlist.NewListWithCapacity[T](size)
-	if left != nil {
-		merged.Add(left.Values()...)
+	return collectionlist.NewListWithCapacity[T](size).Merge(left).Merge(right)
+}
+
+func mergeMultiSets[T comparable](left, right *collectionset.MultiSet[T]) *collectionset.MultiSet[T] {
+	out := cloneMultiSet(left)
+	if right == nil {
+		return out
 	}
-	if right != nil {
-		merged.Add(right.Values()...)
-	}
-	return merged
+	right.Range(func(item T, count int) bool {
+		out.AddN(item, count)
+		return true
+	})
+	return out
 }

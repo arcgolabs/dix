@@ -56,13 +56,13 @@ func (spec *appSpec) rebuildObserverDispatchers(loggerProvider func() *slog.Logg
 		return
 	}
 	spec.observerDispatchers = collectionlist.NewListWithCapacity[*observerDispatcher](spec.observers.Len())
-	observers := spec.observers.Values()
-	for index, observer := range observers {
+	spec.observers.Range(func(index int, observer Observer) bool {
 		if observer == nil {
-			continue
+			return true
 		}
 		spec.observerDispatchers.Add(newObserverDispatcher(index, observer, loggerProvider))
-	}
+		return true
+	})
 }
 
 func (d *observerDispatcher) enqueue(ctx context.Context, emit func(context.Context, Observer)) {

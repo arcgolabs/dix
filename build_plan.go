@@ -11,6 +11,8 @@ import (
 type buildPlan struct {
 	spec              *appSpec
 	modules           *collectionlist.List[*moduleSpec]
+	providerOutputs   *collectionset.Set[string]
+	contributions     contributionPlan
 	profile           Profile
 	parent            *buildPlan
 	inheritedServices *collectionset.Set[string]
@@ -47,6 +49,8 @@ func newUnvalidatedBuildPlanWithParent(ctx context.Context, app *App, parent *bu
 	plan := &buildPlan{
 		spec:              app.spec,
 		modules:           modules,
+		providerOutputs:   providerOutputNames(modules),
+		contributions:     newContributionPlan(modules),
 		profile:           profile,
 		parent:            parent,
 		inheritedServices: inheritedServicesForParent(parent),
@@ -83,6 +87,8 @@ func newProfileBootstrapPlanWithProfile(app *App, profile Profile) (*buildPlan, 
 	return &buildPlan{
 		spec:              app.spec,
 		modules:           modules,
+		providerOutputs:   providerOutputNames(modules),
+		contributions:     newContributionPlan(modules),
 		profile:           profile,
 		inheritedServices: collectionset.NewSet[string](),
 		subplans:          collectionlist.NewList[*buildPlan](),
@@ -125,16 +131,48 @@ func (p *buildPlan) build(ctx context.Context, parent *Runtime) (_ *Runtime, err
 	return rt, nil
 }
 
-func (p *buildPlan) declaresProviderOutput(ref ServiceRef) bool {
-	if p == nil || p.modules == nil || ref.Name == "" {
+func declaresProviderOutputType[T any](plan *buildPlan) bool {
+	if plan == nil || plan.spec == nil {
 		return false
 	}
-	_, found := collectionlist.FindList(p.modules, func(_ int, mod *moduleSpec) bool {
-		return mod != nil && mod.providers.AnyMatch(func(_ int, provider ProviderFunc) bool {
-			return provider.meta.Output.Name == ref.Name
+	return plan.declaresProviderOutputName(serviceNameOfSpec[T](plan.spec))
+}
+
+func (p *buildPlan) declaresProviderOutputName(name string) bool {
+	if p == nil || name == "" {
+		return false
+	}
+	if p.providerOutputs == nil {
+		return providerOutputNames(p.modules).Contains(name)
+	}
+	return p.providerOutputs.Contains(name)
+}
+
+func (p *buildPlan) contributionPlan() contributionPlan {
+	if p == nil || p.contributions.contributions == nil {
+		return newContributionPlan(p.modules)
+	}
+	return p.contributions
+}
+
+func providerOutputNames(modules *collectionlist.List[*moduleSpec]) *collectionset.Set[string] {
+	outputs := collectionset.NewSetWithCapacity[string](16)
+	if modules == nil {
+		return outputs
+	}
+	modules.Range(func(_ int, mod *moduleSpec) bool {
+		if mod == nil {
+			return true
+		}
+		mod.providers.Range(func(_ int, provider ProviderFunc) bool {
+			if provider.meta.Output.Name != "" {
+				outputs.Add(provider.meta.Output.Name)
+			}
+			return true
 		})
+		return true
 	})
-	return found
+	return outputs
 }
 
 func (p *buildPlan) registerProviders(ctx context.Context, rt *Runtime, debugEnabled bool) {

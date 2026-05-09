@@ -88,7 +88,7 @@ func appProfileResolutionCacheable(app *App) bool {
 		if err != nil {
 			return false
 		}
-		if plan.declaresProviderOutput(TypedService[Profile]()) {
+		if declaresProviderOutputType[Profile](plan) {
 			return false
 		}
 	}

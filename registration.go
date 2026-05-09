@@ -191,26 +191,16 @@ func normalizeContributionRefs(refs *collectionlist.List[ContributionRef]) *coll
 	if refs == nil || refs.Len() == 0 {
 		return collectionlist.NewList[ContributionRef]()
 	}
-	filtered := collectionlist.NewListWithCapacity[ContributionRef](refs.Len())
-	refs.Range(func(_ int, ref ContributionRef) bool {
-		if ref.Target.Name != "" && ref.Service.Name != "" {
-			filtered.Add(ref)
-		}
-		return true
+	return refs.Where(func(_ int, ref ContributionRef) bool {
+		return ref.Target.Name != "" && ref.Service.Name != ""
 	})
-	return filtered
 }
 
 func normalizeHookNames(names *collectionlist.List[string]) *collectionlist.List[string] {
 	if names == nil || names.Len() == 0 {
 		return collectionlist.NewList[string]()
 	}
-	filtered := collectionlist.NewListWithCapacity[string](names.Len())
-	names.Range(func(_ int, name string) bool {
-		if name != "" {
-			filtered.Add(name)
-		}
-		return true
+	return names.Where(func(_ int, name string) bool {
+		return name != ""
 	})
-	return filtered
 }

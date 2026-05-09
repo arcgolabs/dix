@@ -148,6 +148,7 @@ func TestValidateReportReturnsIndependentCollectionsAndStillBuilds(t *testing.T)
 	require.False(t, first.HasErrors())
 	require.True(t, first.HasWarnings())
 	baselineWarnings := first.Warnings.Len()
+	assert.Equal(t, 1, first.WarningKindCounts().Count(dix.ValidationWarningRawProviderUndeclaredOutput))
 
 	first.Warnings.Add(dix.ValidationWarning{Kind: "custom"})
 	assert.Equal(t, baselineWarnings+1, first.Warnings.Len())
@@ -158,6 +159,46 @@ func TestValidateReportReturnsIndependentCollectionsAndStillBuilds(t *testing.T)
 	rt, err := app.Build()
 	require.NoError(t, err)
 	assert.NotNil(t, rt)
+}
+
+func TestValidateReportExposesDeclaredServiceCounts(t *testing.T) {
+	t.Parallel()
+
+	app := dix.NewApp("duplicates",
+		dix.NewModule("module",
+			dix.Providers(
+				dix.Value("first"),
+				dix.Provider0(func() string { return "second" }),
+			),
+		),
+	)
+
+	report := app.ValidateReport()
+	require.True(t, report.HasErrors())
+
+	service := dix.TypedService[string]().Name
+	assert.Equal(t, 2, report.DeclaredServiceCounts().Count(service))
+	assert.Equal(t, 2, report.ServiceCounts.Count(service))
+}
+
+func TestValidateReportMergesSubAppWarningCounts(t *testing.T) {
+	t.Parallel()
+
+	app := dix.New("parent",
+		dix.Modules(dix.NewModule("parent",
+			dix.Providers(dix.RawProvider(func(*dix.Container) {})),
+		)),
+		dix.SubApps(dix.NewSubApp("child",
+			dix.Modules(dix.NewModule("child",
+				dix.Providers(dix.RawProvider(func(*dix.Container) {})),
+			)),
+		)),
+	)
+
+	report := app.ValidateReport()
+	require.False(t, report.HasErrors())
+	assert.Equal(t, 2, report.WarningKindCounts().Count(dix.ValidationWarningRawProviderUndeclaredOutput))
+	assert.Equal(t, 2, report.WarningCounts.Count(dix.ValidationWarningRawProviderUndeclaredOutput))
 }
 
 func TestValidateReportDoesNotFreezeDIResolvedProfile(t *testing.T) {

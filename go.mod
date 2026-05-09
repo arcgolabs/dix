@@ -3,10 +3,10 @@ module github.com/arcgolabs/dix
 go 1.26.2
 
 require (
-	github.com/arcgolabs/collectionx/graph v0.7.0
-	github.com/arcgolabs/collectionx/list v0.7.0
-	github.com/arcgolabs/collectionx/mapping v0.7.0
-	github.com/arcgolabs/collectionx/set v0.7.0
+	github.com/arcgolabs/collectionx/graph v0.8.0
+	github.com/arcgolabs/collectionx/list v0.8.0
+	github.com/arcgolabs/collectionx/mapping v0.8.0
+	github.com/arcgolabs/collectionx/set v0.8.0
 	github.com/arcgolabs/pkg/option v0.0.3
 	github.com/panjf2000/ants/v2 v2.12.0
 	github.com/samber/do/v2 v2.0.0

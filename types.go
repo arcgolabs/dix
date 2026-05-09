@@ -70,14 +70,15 @@ type App struct {
 
 // Runtime is a built application runtime produced from an App spec.
 type Runtime struct {
-	spec        *appSpec
-	plan        *buildPlan
-	container   *Container
-	lifecycle   *lifecycleImpl
-	logger      *slog.Logger
-	eventLogger EventLogger
-	state       AppState
-	subapps     *collectionlist.List[*Runtime]
+	spec          *appSpec
+	plan          *buildPlan
+	container     *Container
+	lifecycle     *lifecycleImpl
+	logger        *slog.Logger
+	eventLogger   EventLogger
+	eventRecorder *EventRecorder
+	state         AppState
+	subapps       *collectionlist.List[*Runtime]
 }
 
 // Module is an immutable module specification.
@@ -103,6 +104,7 @@ type appSpec struct {
 	subapps                  *collectionlist.List[*App]
 	runStopTimeout           time.Duration
 	lifecycleConcurrency     int
+	eventBufferCapacity      int
 	versionConfigured        bool
 	descriptionConfigured    bool
 	debug                    debugSettings
@@ -153,6 +155,8 @@ type ValidationWarning struct {
 
 // ValidationReport summarizes graph validation errors and warnings.
 type ValidationReport struct {
-	Errors   *collectionlist.List[error]
-	Warnings *collectionlist.List[ValidationWarning]
+	Errors        *collectionlist.List[error]
+	Warnings      *collectionlist.List[ValidationWarning]
+	WarningCounts *collectionset.MultiSet[ValidationWarningKind]
+	ServiceCounts *collectionset.MultiSet[string]
 }

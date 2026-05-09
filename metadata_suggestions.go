@@ -4,7 +4,6 @@ import (
 	"strings"
 
 	collectionlist "github.com/arcgolabs/collectionx/list"
-	collectionset "github.com/arcgolabs/collectionx/set"
 )
 
 func (s *validationState) missingDependencyHint(name string) string {
@@ -36,25 +35,11 @@ func (s *validationState) suggestServiceNames(name string, limit int) *collectio
 		return matches
 	}
 
-	candidates.Range(func(_ int, candidate string) bool {
-		matches.Add(candidate)
-		return matches.Len() < limit
-	})
-	return matches
+	return candidates.Take(limit)
 }
 
 func (s *validationState) availableServiceNames() *collectionlist.List[string] {
-	names := collectionset.NewSetWithCapacity[string](s.known.Len())
-	s.known.Range(func(name string) bool {
-		names.Add(name)
-		return true
-	})
-	if s.inherited != nil {
-		s.inherited.Range(func(name string) bool {
-			names.Add(name)
-			return true
-		})
-	}
+	names := s.known.Clone().Merge(s.inherited)
 	return collectionlist.NewListWithCapacity[string](names.Len(), names.Values()...).Sort(strings.Compare)
 }
 

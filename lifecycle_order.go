@@ -5,6 +5,8 @@ import (
 	"sort"
 
 	collectionlist "github.com/arcgolabs/collectionx/list"
+	collectionmapping "github.com/arcgolabs/collectionx/mapping"
+	collectionset "github.com/arcgolabs/collectionx/set"
 	"github.com/samber/oops"
 )
 
@@ -70,7 +72,11 @@ func baseLifecycleOrder(
 	if hooks == nil || hooks.Len() == 0 {
 		return nil
 	}
-	entries := append([]lifecycleHookEntry(nil), hooks.Values()...)
+	entries := make([]lifecycleHookEntry, 0, hooks.Len())
+	hooks.Range(func(_ int, entry lifecycleHookEntry) bool {
+		entries = append(entries, entry)
+		return true
+	})
 	sort.SliceStable(entries, func(i, j int) bool {
 		return lifecycleEntryLess(entries[i], entries[j], direction)
 	})
@@ -92,11 +98,12 @@ func lifecycleEntryLess(left, right lifecycleHookEntry, direction lifecycleOrder
 
 func topologicalLifecycleOrder(entries []lifecycleHookEntry) ([]lifecycleHookEntry, error) {
 	index, duplicates := lifecycleHookNameIndex(entries)
-	edges := make([]map[int]struct{}, len(entries))
+	edges := collectionmapping.NewMultiMapWithCapacity[int, int](len(entries))
+	edgeSet := collectionset.NewSetWithCapacity[int](len(entries))
 	indegree := make([]int, len(entries))
 
 	for from, entry := range entries {
-		if err := addLifecycleOrderingEdges(from, entry, index, duplicates, edges, indegree); err != nil {
+		if err := addLifecycleOrderingEdges(from, entry, index, duplicates, edges, edgeSet, indegree); err != nil {
 			return nil, err
 		}
 	}
@@ -104,19 +111,22 @@ func topologicalLifecycleOrder(entries []lifecycleHookEntry) ([]lifecycleHookEnt
 	return consumeLifecycleOrder(entries, edges, indegree)
 }
 
-func lifecycleHookNameIndex(entries []lifecycleHookEntry) (map[string]int, map[string]bool) {
-	index := make(map[string]int, len(entries))
-	duplicates := make(map[string]bool)
+func lifecycleHookNameIndex(entries []lifecycleHookEntry) (
+	*collectionmapping.Map[string, int],
+	*collectionset.Set[string],
+) {
+	index := collectionmapping.NewMapWithCapacity[string, int](len(entries))
+	duplicates := collectionset.NewSet[string]()
 	for i, entry := range entries {
 		name := hookName(entry.meta)
 		if name == "" {
 			continue
 		}
-		if _, found := index[name]; found {
-			duplicates[name] = true
+		if _, found := index.Get(name); found {
+			duplicates.Add(name)
 			continue
 		}
-		index[name] = i
+		index.Set(name, i)
 	}
 	return index, duplicates
 }
@@ -124,23 +134,25 @@ func lifecycleHookNameIndex(entries []lifecycleHookEntry) (map[string]int, map[s
 func addLifecycleOrderingEdges(
 	from int,
 	entry lifecycleHookEntry,
-	index map[string]int,
-	duplicates map[string]bool,
-	edges []map[int]struct{},
+	index *collectionmapping.Map[string, int],
+	duplicates *collectionset.Set[string],
+	edges *collectionmapping.MultiMap[int, int],
+	edgeSet *collectionset.Set[int],
 	indegree []int,
 ) error {
-	if err := addLifecycleAfterEdges(from, entry, index, duplicates, edges, indegree); err != nil {
+	if err := addLifecycleAfterEdges(from, entry, index, duplicates, edges, edgeSet, indegree); err != nil {
 		return err
 	}
-	return addLifecycleBeforeEdges(from, entry, index, duplicates, edges, indegree)
+	return addLifecycleBeforeEdges(from, entry, index, duplicates, edges, edgeSet, indegree)
 }
 
 func addLifecycleAfterEdges(
 	current int,
 	entry lifecycleHookEntry,
-	index map[string]int,
-	duplicates map[string]bool,
-	edges []map[int]struct{},
+	index *collectionmapping.Map[string, int],
+	duplicates *collectionset.Set[string],
+	edges *collectionmapping.MultiMap[int, int],
+	edgeSet *collectionset.Set[int],
 	indegree []int,
 ) error {
 	var edgeErr error
@@ -150,7 +162,7 @@ func addLifecycleAfterEdges(
 			edgeErr = err
 			return false
 		}
-		addLifecycleEdge(target, current, edges, indegree)
+		addLifecycleEdge(target, current, edges, edgeSet, indegree)
 		return true
 	})
 	return edgeErr
@@ -159,9 +171,10 @@ func addLifecycleAfterEdges(
 func addLifecycleBeforeEdges(
 	current int,
 	entry lifecycleHookEntry,
-	index map[string]int,
-	duplicates map[string]bool,
-	edges []map[int]struct{},
+	index *collectionmapping.Map[string, int],
+	duplicates *collectionset.Set[string],
+	edges *collectionmapping.MultiMap[int, int],
+	edgeSet *collectionset.Set[int],
 	indegree []int,
 ) error {
 	var edgeErr error
@@ -171,7 +184,7 @@ func addLifecycleBeforeEdges(
 			edgeErr = err
 			return false
 		}
-		addLifecycleEdge(current, target, edges, indegree)
+		addLifecycleEdge(current, target, edges, edgeSet, indegree)
 		return true
 	})
 	return edgeErr
@@ -180,15 +193,15 @@ func addLifecycleBeforeEdges(
 func resolveLifecycleHookTarget(
 	entry lifecycleHookEntry,
 	name string,
-	index map[string]int,
-	duplicates map[string]bool,
+	index *collectionmapping.Map[string, int],
+	duplicates *collectionset.Set[string],
 ) (int, error) {
-	if duplicates[name] {
+	if duplicates.Contains(name) {
 		return 0, oops.In("dix").
 			With("op", "lifecycle_order", "hook", hookName(entry.meta), "target", name).
 			Errorf("lifecycle hook target `%s` is ambiguous", name)
 	}
-	target, found := index[name]
+	target, found := index.Get(name)
 	if !found {
 		return 0, oops.In("dix").
 			With("op", "lifecycle_order", "hook", hookName(entry.meta), "target", name).
@@ -197,76 +210,77 @@ func resolveLifecycleHookTarget(
 	return target, nil
 }
 
-func addLifecycleEdge(from, to int, edges []map[int]struct{}, indegree []int) {
-	if from == to {
+func addLifecycleEdge(
+	from int,
+	to int,
+	edges *collectionmapping.MultiMap[int, int],
+	edgeSet *collectionset.Set[int],
+	indegree []int,
+) {
+	if from == to || edges == nil || edgeSet == nil {
 		return
 	}
-	if edges[from] == nil {
-		edges[from] = map[int]struct{}{}
-	}
-	if _, exists := edges[from][to]; exists {
+	key := lifecycleEdgeKey(from, to, len(indegree))
+	if edgeSet.Contains(key) {
 		return
 	}
-	edges[from][to] = struct{}{}
+	edgeSet.Add(key)
+	edges.Put(from, to)
 	indegree[to]++
+}
+
+func lifecycleEdgeKey(from, to, size int) int {
+	return from*size + to
 }
 
 func consumeLifecycleOrder(
 	entries []lifecycleHookEntry,
-	edges []map[int]struct{},
+	edges *collectionmapping.MultiMap[int, int],
 	indegree []int,
 ) ([]lifecycleHookEntry, error) {
-	used := make([]bool, len(entries))
+	ready, err := newLifecycleReadyQueue(indegree)
+	if err != nil {
+		return nil, err
+	}
+
 	ordered := make([]lifecycleHookEntry, 0, len(entries))
-	for len(ordered) < len(entries) {
-		next := nextLifecycleReadyNode(used, indegree)
-		if next < 0 {
-			return nil, oops.In("dix").
-				With("op", "lifecycle_order").
-				New("lifecycle hook dependency cycle detected")
-		}
-		used[next] = true
+	for !ready.IsEmpty() {
+		next, _ := ready.Pop()
 		ordered = append(ordered, entries[next])
-		for target := range edges[next] {
+		for _, target := range edges.Get(next) {
 			indegree[target]--
+			if indegree[target] == 0 {
+				ready.Push(target)
+			}
 		}
+	}
+	if len(ordered) < len(entries) {
+		return nil, oops.In("dix").
+			With("op", "lifecycle_order").
+			New("lifecycle hook dependency cycle detected")
 	}
 	return ordered, nil
 }
 
-func nextLifecycleReadyNode(used []bool, indegree []int) int {
+func newLifecycleReadyQueue(indegree []int) (*collectionlist.PriorityQueue[int], error) {
+	ready, err := collectionlist.NewPriorityQueue[int](func(left, right int) bool {
+		return left < right
+	})
+	if err != nil {
+		return nil, err
+	}
 	for i := range indegree {
-		if !used[i] && indegree[i] == 0 {
-			return i
+		if indegree[i] == 0 {
+			ready.Push(i)
 		}
 	}
-	return -1
+	return ready, nil
 }
 
 func reverseLifecycleEntries(entries []lifecycleHookEntry) []lifecycleHookEntry {
-	ordered := append([]lifecycleHookEntry(nil), entries...)
-	for i, j := 0, len(ordered)-1; i < j; i, j = i+1, j-1 {
-		ordered[i], ordered[j] = ordered[j], ordered[i]
+	reversed := make([]lifecycleHookEntry, len(entries))
+	for i, entry := range entries {
+		reversed[len(entries)-1-i] = entry
 	}
-	return ordered
-}
-
-func hasLifecycleOrdering(entries []lifecycleHookEntry) bool {
-	for _, entry := range entries {
-		if lifecycleHookHasOrdering(entry.meta) {
-			return true
-		}
-	}
-	return false
-}
-
-func lifecycleHookHasOrdering(meta HookMetadata) bool {
-	return (meta.After != nil && meta.After.Len() > 0) || (meta.Before != nil && meta.Before.Len() > 0)
-}
-
-func hookName(meta HookMetadata) string {
-	if meta.Name != "" {
-		return meta.Name
-	}
-	return meta.Label
+	return reversed
 }

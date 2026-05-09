@@ -139,14 +139,15 @@ func (p *buildPlan) buildEvent(duration time.Duration, err error) BuildEvent {
 	if p == nil || p.spec == nil {
 		return BuildEvent{Duration: duration, Err: err}
 	}
+	stats := countModuleStats(p.modules)
 	return BuildEvent{
 		Meta:          p.spec.meta,
 		Profile:       p.profile,
-		ModuleCount:   countModules(p.modules),
-		ProviderCount: countModuleProviders(p.modules),
-		HookCount:     countModuleHooks(p.modules),
-		SetupCount:    countModuleSetups(p.modules),
-		InvokeCount:   countModuleInvokes(p.modules),
+		ModuleCount:   stats.modules,
+		ProviderCount: stats.providers,
+		HookCount:     stats.hooks,
+		SetupCount:    stats.setups,
+		InvokeCount:   stats.invokes,
 		Duration:      duration,
 		Err:           err,
 	}
@@ -156,14 +157,15 @@ func (p *buildPlan) runtimeBuildEvent(rt *Runtime, duration time.Duration, err e
 	if p == nil || rt == nil {
 		return BuildEvent{Duration: duration, Err: err}
 	}
+	stats := countModuleStats(p.modules)
 	return BuildEvent{
 		Meta:          rt.Meta(),
 		Profile:       rt.Profile(),
-		ModuleCount:   countModules(p.modules),
-		ProviderCount: countModuleProviders(p.modules),
-		HookCount:     countModuleHooks(p.modules),
-		SetupCount:    countModuleSetups(p.modules),
-		InvokeCount:   countModuleInvokes(p.modules),
+		ModuleCount:   stats.modules,
+		ProviderCount: stats.providers,
+		HookCount:     stats.hooks,
+		SetupCount:    stats.setups,
+		InvokeCount:   stats.invokes,
 		Duration:      duration,
 		Err:           err,
 	}

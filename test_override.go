@@ -132,15 +132,9 @@ func filterProvidersByServiceName(providers *collectionlist.List[ProviderFunc], 
 	if providers == nil || providers.Len() == 0 {
 		return collectionlist.NewList[ProviderFunc]()
 	}
-	filtered := collectionlist.NewListWithCapacity[ProviderFunc](providers.Len())
-	providers.Range(func(_ int, provider ProviderFunc) bool {
-		if providerMatchesAnyService(provider, names) {
-			return true
-		}
-		filtered.Add(provider)
-		return true
+	return providers.Reject(func(_ int, provider ProviderFunc) bool {
+		return providerMatchesAnyService(provider, names)
 	})
-	return filtered
 }
 
 func providerMatchesAnyService(provider ProviderFunc, names serviceNameSet) bool {
@@ -148,12 +142,9 @@ func providerMatchesAnyService(provider ProviderFunc, names serviceNameSet) bool
 	if names.Contains(meta.Output.Name) {
 		return true
 	}
-	matches := false
-	meta.Aliases.Range(func(_ int, alias ServiceRef) bool {
-		matches = names.Contains(alias.Name)
-		return !matches
+	return meta.Aliases.AnyMatch(func(_ int, alias ServiceRef) bool {
+		return names.Contains(alias.Name)
 	})
-	return matches
 }
 
 func nextTestOverrideModuleName(modules *collectionlist.List[Module]) string {

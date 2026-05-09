@@ -55,12 +55,12 @@ func (p *buildPlan) frameworkConfigDeclarations() frameworkConfigDeclarations {
 		return frameworkConfigDeclarations{}
 	}
 	return frameworkConfigDeclarations{
-		slogLogger:   p.declaresProviderOutput(TypedService[*slog.Logger]()),
-		eventLogger:  p.declaresProviderOutput(TypedService[EventLogger]()),
-		appMeta:      p.declaresProviderOutput(TypedService[AppMeta]()),
-		profile:      p.declaresProviderOutput(TypedService[Profile]()),
-		observer:     p.declaresProviderOutput(TypedService[Observer]()),
-		observerList: p.declaresProviderOutput(TypedService[*collectionlist.List[Observer]]()),
+		slogLogger:   declaresProviderOutputType[*slog.Logger](p),
+		eventLogger:  declaresProviderOutputType[EventLogger](p),
+		appMeta:      declaresProviderOutputType[AppMeta](p),
+		profile:      declaresProviderOutputType[Profile](p),
+		observer:     declaresProviderOutputType[Observer](p),
+		observerList: declaresProviderOutputType[*collectionlist.List[Observer]](p),
 	}
 }
 
@@ -68,13 +68,13 @@ func (p *buildPlan) registerRuntimeCoreServices(rt *Runtime) {
 	if rt == nil || rt.container == nil || rt.spec == nil {
 		return
 	}
-	if !p.declaresProviderOutput(TypedService[*slog.Logger]()) {
+	if !declaresProviderOutputType[*slog.Logger](p) {
 		ProvideValueT[*slog.Logger](rt.container, rt.logger)
 	}
-	if !p.declaresProviderOutput(TypedService[AppMeta]()) {
+	if !declaresProviderOutputType[AppMeta](p) {
 		ProvideValueT[AppMeta](rt.container, rt.spec.meta)
 	}
-	if !p.declaresProviderOutput(TypedService[Profile]()) {
+	if !declaresProviderOutputType[Profile](p) {
 		ProvideValueT[Profile](rt.container, rt.spec.profile)
 	}
 }

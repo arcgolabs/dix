@@ -10,10 +10,10 @@ and a runtime model without forcing most users to deal with `do` directly.
 - **Typed DI**: `ProviderN` registers typed constructors; `InvokeN` runs typed eager initialization.
 - **Collection contributions**: `Into[T]` and `ContributeN[T]` collect distributed providers into typed slices, maps, and `collectionx` containers.
 - **Lifecycle**: `OnStart` / `OnStop` hooks with priority, opt-in parallel execution, and `Runtime.Start/Stop/StopWithReport`.
-- **Validation**: `app.Validate()` fails on graph errors; `app.ValidateReport()` also exposes validation warnings and missing-dependency suggestions for raw escape hatches.
-- **Dependency graph**: `app.DependencyGraph()` / `app.Explain()` expose a static build graph, Graphviz DOT output, and topological order.
+- **Validation**: `app.Validate()` fails on graph errors; `app.ValidateReport()` also exposes validation warnings, warning counts, service declaration counts, and missing-dependency suggestions for raw escape hatches.
+- **Dependency graph**: `app.DependencyGraph()` / `app.Explain()` expose a static build graph, Graphviz DOT output, topological order, service node indexes, and module-service relation tables.
 - **SubApps**: `SubApps(...)` builds child apps in child `do` scopes while inheriting parent services.
-- **Runtime**: container access, health checks, lifecycle summaries, subapp summaries, and diagnostics.
+- **Runtime**: container access, health checks, lifecycle summaries, subapp summaries, diagnostics, and optional recent-event buffers.
 - **Advanced features**: named services, alias binding, transient providers, overrides, scopes via `dix/advanced`.
 
 ## Package layout
@@ -47,6 +47,7 @@ go get github.com/arcgolabs/dix@latest
 - `dix.Modules(...)`, `dix.UseProfile(...)`, `dix.Version(...)`, `dix.UseLogger(...)`, `dix.LoggerFrom(...)`, `dix.UseLogger0/1(...)`
 - `dix.UseEventLogger(...)`, `dix.UseEventLogger0/1(...)`
 - `dix.WithObserver(...)` / `dix.WithObservers(...)`
+- `dix.RecentEvents(capacity)`, `dix.NewEventRecorder(capacity)`
 - `dix.Providers(...)`, `dix.Hooks(...)`, `dix.Imports(...)`, `dix.Setups(...)`
 - `dix.WithModules(...)`, `dix.WithProfile(...)`, `dix.WithVersion(...)`, `dix.WithLogger(...)`, `dix.WithLoggerFrom(...)`
 - `dix.WithModuleProviders(...)`, `dix.WithModuleHooks(...)`, `dix.WithModuleImports(...)`
@@ -60,6 +61,8 @@ go get github.com/arcgolabs/dix@latest
 - `rt.Scope(...)`, `dix.ScopeFunc(...)`, `dix.ProvideNamedValueT(...)`, `dix.ProvideNamedT(...)`, `dix.ProvideNamed1T(...)`
 - `app.Test(...)`, `dix.TestValue(...)`, `dix.TestProviders(...)`, `dix.TestDisableModules(...)`
 - `rt.LifecycleSummary()`, `rt.SubAppSummaries()`, `rt.ScopePath()`
+- `rt.RecentEvents()`, `rt.EventRecorder()`
+- `report.WarningKindCounts()`, `report.DeclaredServiceCounts()`, `graph.RelationTable()`, `graph.ServiceNodeIndex()`, `graph.ModuleNodeIndex()`
 - `advanced.Named(...)`, `advanced.Alias(...)`, `advanced.NamedAlias(...)`, `advanced.Transient(...)`, `advanced.Override(...)`
 - `testx.Validate(t, app)`, `testx.Build(t, app)`, `testx.Start(ctx, t, app)`
 - `app.Validate()`, `app.ValidateReport()`, `app.Build()`, `app.Start(ctx)`, `app.RunContext(ctx)`
@@ -88,6 +91,8 @@ go get github.com/arcgolabs/dix@latest
 - Typed `ProviderN` / `InvokeN` / `OnStart` / `OnStop` stay on the strict validation path.
 - Raw escape hatches are still supported, but you should prefer the metadata-aware forms such as `RawProviderWithMetadata(...)`, `RawInvokeWithMetadata(...)`, `RawHookWithMetadata(...)`, `RawSetupWithMetadata(...)`, and `advanced.DoSetupWithMetadata(...)` so the validator can keep reasoning about dependencies and graph mutations.
 - Missing dependency errors include nearby available service names to make split-module and renamed-service issues easier to diagnose.
+- `ValidationReport.WarningKindCounts()` returns a `collectionx/set.MultiSet` keyed by warning kind.
+- `ValidationReport.DeclaredServiceCounts()` returns a `collectionx/set.MultiSet` keyed by service name, which helps diagnose duplicate declarations without parsing error strings.
 
 ## Dependency graph and inspection
 
@@ -105,9 +110,17 @@ if err != nil {
 	panic(err)
 }
 fmt.Println("nodes:", order.Len())
+
+relations := explanation.Graph.RelationTable()
+serviceIndex := explanation.Graph.ServiceNodeIndex()
+moduleIndex := explanation.Graph.ModuleNodeIndex()
+_, _ = relations, serviceIndex, moduleIndex
 ```
 
 `DependencyGraph.Directed()` returns a clone of the underlying `collectionx/graph` directed graph for callers that need lower-level traversal.
+`DependencyGraph.RelationTable()` returns a `collectionx/mapping.Table` from `{app,module}` to `{app,service}` to relation kinds such as `consumes`, `provides`, `aliases`, `contributes`, and `overrides`.
+`DependencyGraph.ServiceNodeIndex()` returns a `collectionx/mapping.BiMap` between service keys and graph node IDs.
+`DependencyGraph.ModuleNodeIndex()` returns a `collectionx/mapping.BiMap` between module keys and graph node IDs.
 `advanced.InspectRuntime(...)` also includes the dependency graph, lifecycle summary, and subapp summaries.
 
 ## Lifecycle scheduling and build logs
@@ -127,6 +140,7 @@ app := dix.New("worker",
 ```
 
 Build, start, stop, setup, invoke, provider construction, and explicit `ResolveAsContext` diagnostics include duration fields when debug logging is enabled. Observers can also implement `ProviderObserver`, `ResolveObserver`, or `LifecycleHookObserver` for structured diagnostic events suitable for metrics and tracing.
+Use `dix.RecentEvents(capacity)` when a runtime should keep the last N framework events in memory. The runtime stores them in a `collectionx/list.ConcurrentRingBuffer`; `rt.RecentEvents()` returns a FIFO `collectionx` list snapshot, and `rt.RecentEventSnapshot()` exposes the underlying ring-buffer snapshot.
 
 ## Eager providers
 

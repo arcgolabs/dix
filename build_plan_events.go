@@ -40,13 +40,14 @@ func (p *buildPlan) logBuildStart(ctx context.Context, rt *Runtime, infoEnabled,
 		rt.logMessage(ctx, EventLevelInfo, "building app", "app", p.spec.meta.Name, "profile", p.profile)
 	}
 	if debugEnabled {
+		stats := countModuleStats(p.modules)
 		rt.logMessage(ctx, EventLevelDebug, "build plan ready",
 			"app", p.spec.meta.Name,
-			"modules", p.modules.Len(),
-			"providers", countModuleProviders(p.modules),
-			"hooks", countModuleHooks(p.modules),
-			"setups", countModuleSetups(p.modules),
-			"invokes", countModuleInvokes(p.modules),
+			"modules", stats.modules,
+			"providers", stats.providers,
+			"hooks", stats.hooks,
+			"setups", stats.setups,
+			"invokes", stats.invokes,
 		)
 	}
 }

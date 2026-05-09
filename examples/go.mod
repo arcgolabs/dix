@@ -3,16 +3,16 @@ module github.com/arcgolabs/dix/examples
 go 1.26.2
 
 require (
-	github.com/arcgolabs/collectionx/list v0.7.0
-	github.com/arcgolabs/collectionx/mapping v0.7.0
-	github.com/arcgolabs/logx v0.1.1
+	github.com/arcgolabs/collectionx/list v0.8.0
+	github.com/arcgolabs/collectionx/mapping v0.8.0
+	github.com/arcgolabs/logx v0.1.2
 	github.com/arcgolabs/observabilityx v0.4.0
 	github.com/samber/do/v2 v2.0.0
 )
 
 require (
-	github.com/arcgolabs/collectionx/internal v0.6.0 // indirect
-	github.com/arcgolabs/collectionx/set v0.7.0 // indirect
+	github.com/arcgolabs/collectionx/graph v0.8.0 // indirect
+	github.com/arcgolabs/collectionx/set v0.8.0 // indirect
 	github.com/arcgolabs/pkg/option v0.0.3 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect

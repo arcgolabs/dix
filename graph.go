@@ -76,6 +76,18 @@ type DependencyGraphEdge struct {
 	Module string
 }
 
+// DependencyGraphModuleKey identifies a module row in graph inspection tables.
+type DependencyGraphModuleKey struct {
+	App    string
+	Module string
+}
+
+// DependencyGraphServiceKey identifies a service column in graph inspection tables.
+type DependencyGraphServiceKey struct {
+	App     string
+	Service string
+}
+
 // DependencyGraph is a structured view of an app build plan.
 type DependencyGraph struct {
 	Nodes *collectionlist.List[DependencyGraphNode]
@@ -145,6 +157,68 @@ func (g DependencyGraph) Directed() *collectiongraph.Graph[string, DependencyGra
 		return collectiongraph.NewDirectedGraph[string, DependencyGraphNode]()
 	}
 	return g.graph.Clone()
+}
+
+// ServiceNodeIndex returns a bidirectional snapshot between service keys and graph node IDs.
+func (g DependencyGraph) ServiceNodeIndex() *collectionmapping.BiMap[DependencyGraphServiceKey, string] {
+	index := collectionmapping.NewBiMap[DependencyGraphServiceKey, string]()
+	if g.Nodes == nil {
+		return index
+	}
+	g.Nodes.Range(func(_ int, node DependencyGraphNode) bool {
+		if node.Kind == DependencyGraphNodeService && node.Service != "" {
+			index.Put(DependencyGraphServiceKey{App: node.App, Service: node.Service}, node.ID)
+		}
+		return true
+	})
+	return index
+}
+
+// ModuleNodeIndex returns a bidirectional snapshot between module keys and graph node IDs.
+func (g DependencyGraph) ModuleNodeIndex() *collectionmapping.BiMap[DependencyGraphModuleKey, string] {
+	index := collectionmapping.NewBiMap[DependencyGraphModuleKey, string]()
+	if g.Nodes == nil {
+		return index
+	}
+	g.Nodes.Range(func(_ int, node DependencyGraphNode) bool {
+		if node.Kind == DependencyGraphNodeModule && node.Module != "" {
+			index.Put(DependencyGraphModuleKey{App: node.App, Module: node.Module}, node.ID)
+		}
+		return true
+	})
+	return index
+}
+
+// RelationTable returns a module-service matrix keyed by app/module and app/service.
+func (g DependencyGraph) RelationTable() *collectionmapping.Table[
+	DependencyGraphModuleKey,
+	DependencyGraphServiceKey,
+	*collectionset.Set[DependencyGraphEdgeKind],
+] {
+	table := collectionmapping.NewTable[
+		DependencyGraphModuleKey,
+		DependencyGraphServiceKey,
+		*collectionset.Set[DependencyGraphEdgeKind],
+	]()
+	if g.Edges == nil {
+		return table
+	}
+
+	nodes := dependencyGraphNodeIndex(g.Nodes)
+	g.Edges.Range(func(_ int, edge DependencyGraphEdge) bool {
+		moduleKey, serviceKey, ok := dependencyGraphRelationKeys(edge, nodes)
+		if !ok {
+			return true
+		}
+		relations, found := table.Get(moduleKey, serviceKey)
+		if !found {
+			relations = collectionset.NewSetWithCapacity[DependencyGraphEdgeKind](2)
+			table.Put(moduleKey, serviceKey, relations)
+		}
+		relations.Add(edge.Kind)
+		return true
+	})
+	return table
 }
 
 // TopologicalOrder returns graph nodes in dependency-first order.
@@ -229,6 +303,7 @@ type dependencyGraphBuilder struct {
 	graph       *collectiongraph.Graph[string, DependencyGraphNode]
 	edges       *collectionlist.List[DependencyGraphEdge]
 	edgeSet     *collectionset.Set[string]
+	planPaths   *collectionmapping.Map[*buildPlan, string]
 	parentPaths *collectionmapping.Map[string, string]
 	moduleIDs   *collectionmapping.Map[string, string]
 	services    *collectionmapping.Map[string, string]
@@ -248,6 +323,7 @@ func newDependencyGraphBuilder() *dependencyGraphBuilder {
 		graph:       collectiongraph.NewDirectedGraph[string, DependencyGraphNode](),
 		edges:       collectionlist.NewList[DependencyGraphEdge](),
 		edgeSet:     collectionset.NewSetWithCapacity[string](64),
+		planPaths:   collectionmapping.NewMap[*buildPlan, string](),
 		parentPaths: collectionmapping.NewMap[string, string](),
 		moduleIDs:   collectionmapping.NewMap[string, string](),
 		services:    collectionmapping.NewMap[string, string](),
@@ -258,10 +334,10 @@ func (b *dependencyGraphBuilder) collectPlan(plan *buildPlan) {
 	if plan == nil || plan.spec == nil {
 		return
 	}
-	path := buildPlanPath(plan)
+	path := b.planPath(plan)
 	parentPath := ""
 	if plan.parent != nil {
-		parentPath = buildPlanPath(plan.parent)
+		parentPath = b.planPath(plan.parent)
 	}
 	b.parentPaths.Set(path, parentPath)
 	b.addAppNode(plan, path)
@@ -278,7 +354,7 @@ func (b *dependencyGraphBuilder) connectPlan(plan *buildPlan) {
 	if plan == nil || plan.spec == nil {
 		return
 	}
-	path := buildPlanPath(plan)
+	path := b.planPath(plan)
 	appID := appNodeID(path)
 	plan.modules.Range(func(_ int, mod *moduleSpec) bool {
 		moduleID := b.moduleID(path, mod)
@@ -292,11 +368,23 @@ func (b *dependencyGraphBuilder) connectPlan(plan *buildPlan) {
 	})
 	b.connectContributionCollections(path, plan)
 	plan.subplans.Range(func(_ int, subplan *buildPlan) bool {
-		subPath := buildPlanPath(subplan)
+		subPath := b.planPath(subplan)
 		b.addEdge(appID, appNodeID(subPath), DependencyGraphEdgeSubApp, "subapp", path, "")
 		b.connectPlan(subplan)
 		return true
 	})
+}
+
+func (b *dependencyGraphBuilder) planPath(plan *buildPlan) string {
+	if plan == nil {
+		return "<nil>"
+	}
+	if path, found := b.planPaths.Get(plan); found {
+		return path
+	}
+	path := buildPlanPath(plan)
+	b.planPaths.Set(plan, path)
+	return path
 }
 
 func (b *dependencyGraphBuilder) snapshot() DependencyGraph {
@@ -310,6 +398,61 @@ func (b *dependencyGraphBuilder) snapshot() DependencyGraph {
 		Edges: b.edges.Clone(),
 		graph: b.graph.Clone(),
 	}
+}
+
+func dependencyGraphNodeIndex(
+	nodes *collectionlist.List[DependencyGraphNode],
+) *collectionmapping.Map[string, DependencyGraphNode] {
+	if nodes == nil {
+		return collectionmapping.NewMap[string, DependencyGraphNode]()
+	}
+	index := collectionmapping.NewMapWithCapacity[string, DependencyGraphNode](nodes.Len())
+	nodes.Range(func(_ int, node DependencyGraphNode) bool {
+		index.Set(node.ID, node)
+		return true
+	})
+	return index
+}
+
+func dependencyGraphRelationKeys(
+	edge DependencyGraphEdge,
+	nodes *collectionmapping.Map[string, DependencyGraphNode],
+) (DependencyGraphModuleKey, DependencyGraphServiceKey, bool) {
+	from, fromOK := nodes.Get(edge.From)
+	to, toOK := nodes.Get(edge.To)
+	if !fromOK || !toOK {
+		return DependencyGraphModuleKey{}, DependencyGraphServiceKey{}, false
+	}
+
+	switch edge.Kind {
+	case DependencyGraphEdgeConsumes:
+		return dependencyGraphRelationKey(to, from)
+	case DependencyGraphEdgeProvides,
+		DependencyGraphEdgeAliases,
+		DependencyGraphEdgeContributes,
+		DependencyGraphEdgeOverrides:
+		return dependencyGraphRelationKey(from, to)
+	case DependencyGraphEdgeSubApp,
+		DependencyGraphEdgeContains,
+		DependencyGraphEdgeImports:
+		return DependencyGraphModuleKey{}, DependencyGraphServiceKey{}, false
+	}
+	return DependencyGraphModuleKey{}, DependencyGraphServiceKey{}, false
+}
+
+func dependencyGraphRelationKey(
+	moduleNode DependencyGraphNode,
+	serviceNode DependencyGraphNode,
+) (DependencyGraphModuleKey, DependencyGraphServiceKey, bool) {
+	if moduleNode.Kind != DependencyGraphNodeOperation ||
+		serviceNode.Kind != DependencyGraphNodeService ||
+		moduleNode.Module == "" ||
+		serviceNode.Service == "" {
+		return DependencyGraphModuleKey{}, DependencyGraphServiceKey{}, false
+	}
+	return DependencyGraphModuleKey{App: moduleNode.App, Module: moduleNode.Module},
+		DependencyGraphServiceKey{App: serviceNode.App, Service: serviceNode.Service},
+		true
 }
 
 func (b *dependencyGraphBuilder) addAppNode(plan *buildPlan, path string) {
@@ -341,19 +484,22 @@ func (b *dependencyGraphBuilder) collectModules(plan *buildPlan, path string) {
 }
 
 func (b *dependencyGraphBuilder) collectCoreServices(plan *buildPlan, path string) {
-	if !plan.declaresProviderOutput(TypedService[*slog.Logger]()) {
-		b.ensureService(path, TypedService[*slog.Logger]().Name, "dix core")
+	loggerName := serviceNameOfSpec[*slog.Logger](plan.spec)
+	appMetaName := serviceNameOfSpec[AppMeta](plan.spec)
+	profileName := serviceNameOfSpec[Profile](plan.spec)
+	if !plan.declaresProviderOutputName(loggerName) {
+		b.ensureService(path, loggerName, "dix core")
 	}
-	if !plan.declaresProviderOutput(TypedService[AppMeta]()) {
-		b.ensureService(path, TypedService[AppMeta]().Name, "dix core")
+	if !plan.declaresProviderOutputName(appMetaName) {
+		b.ensureService(path, appMetaName, "dix core")
 	}
-	if !plan.declaresProviderOutput(TypedService[Profile]()) {
-		b.ensureService(path, TypedService[Profile]().Name, "dix core")
+	if !plan.declaresProviderOutputName(profileName) {
+		b.ensureService(path, profileName, "dix core")
 	}
 }
 
 func (b *dependencyGraphBuilder) collectSyntheticContributionServices(plan *buildPlan, path string) {
-	newContributionPlan(plan.modules).syntheticOutputs().Range(func(_ int, output ServiceRef) bool {
+	plan.contributionPlan().syntheticOutputs().Range(func(_ int, output ServiceRef) bool {
 		b.ensureService(path, output.Name, "dix contributions")
 		return true
 	})
@@ -464,10 +610,10 @@ func (b *dependencyGraphBuilder) connectHooks(path string, mod *moduleSpec) {
 }
 
 func (b *dependencyGraphBuilder) connectContributionCollections(path string, plan *buildPlan) {
-	contributionPlan := newContributionPlan(plan.modules)
+	contributions := plan.contributionPlan()
 	appID := appNodeID(path)
-	contributionPlan.targets.Range(func(index int, target string) bool {
-		factory, found := contributionPlan.factories.Get(target)
+	contributions.targets.Range(func(index int, target string) bool {
+		factory, found := contributions.factories.Get(target)
 		if !found {
 			return true
 		}
@@ -480,7 +626,7 @@ func (b *dependencyGraphBuilder) connectContributionCollections(path string, pla
 			Operation: "collection provider",
 		})
 		b.addEdge(appID, opID, DependencyGraphEdgeContains, "collection provider", path, "")
-		for _, contribution := range contributionPlan.contributions.Get(target) {
+		for _, contribution := range contributions.contributions.Get(target) {
 			b.addEdge(
 				b.resolveService(path, contribution.Service.Name),
 				opID,
@@ -491,7 +637,7 @@ func (b *dependencyGraphBuilder) connectContributionCollections(path string, pla
 			)
 		}
 		factory.outputs.Range(func(_ int, output ServiceRef) bool {
-			if contributionPlan.explicit.Contains(output.Name) {
+			if contributions.explicit.Contains(output.Name) {
 				return true
 			}
 			b.addEdge(opID, b.resolveService(path, output.Name), DependencyGraphEdgeProvides, "collection provider", path, "")
@@ -621,14 +767,11 @@ func buildPlanPath(plan *buildPlan) string {
 	if plan == nil || plan.spec == nil {
 		return "<nil>"
 	}
-	names := []string{plan.spec.meta.Name}
+	names := collectionlist.NewList[string](plan.spec.meta.Name)
 	for parent := plan.parent; parent != nil && parent.spec != nil; parent = parent.parent {
-		names = append(names, parent.spec.meta.Name)
+		names.Add(parent.spec.meta.Name)
 	}
-	for i, j := 0, len(names)-1; i < j; i, j = i+1, j-1 {
-		names[i], names[j] = names[j], names[i]
-	}
-	return strings.Join(names, "/")
+	return names.Reverse().Join("/")
 }
 
 func appNodeID(path string) string {
