@@ -104,7 +104,12 @@ func (l *slogEventLogger) LogEvent(ctx context.Context, event Event) {
 
 func (l *slogEventLogger) logBuild(event BuildEvent) {
 	if event.Err != nil {
-		l.logger.Error("app build failed", "app", event.Meta.Name, "profile", event.Profile, "error", event.Err)
+		l.logger.Error("app build failed",
+			"app", event.Meta.Name,
+			"profile", event.Profile,
+			"duration", event.Duration,
+			"error", event.Err,
+		)
 		return
 	}
 	l.logger.Info("app built",
@@ -115,23 +120,24 @@ func (l *slogEventLogger) logBuild(event BuildEvent) {
 		"hooks", event.HookCount,
 		"setups", event.SetupCount,
 		"invokes", event.InvokeCount,
+		"duration", event.Duration,
 	)
 }
 
 func (l *slogEventLogger) logStart(event StartEvent) {
 	if event.Err != nil {
-		l.logger.Error("app start failed", "app", event.Meta.Name, "error", event.Err)
+		l.logger.Error("app start failed", "app", event.Meta.Name, "duration", event.Duration, "error", event.Err)
 		return
 	}
-	l.logger.Info("app started", "app", event.Meta.Name)
+	l.logger.Info("app started", "app", event.Meta.Name, "duration", event.Duration)
 }
 
 func (l *slogEventLogger) logStop(event StopEvent) {
 	if event.Err != nil {
-		l.logger.Error("app stop failed", "app", event.Meta.Name, "error", event.Err)
+		l.logger.Error("app stop failed", "app", event.Meta.Name, "duration", event.Duration, "error", event.Err)
 		return
 	}
-	l.logger.Info("app stopped", "app", event.Meta.Name)
+	l.logger.Info("app stopped", "app", event.Meta.Name, "duration", event.Duration)
 }
 
 func (l *slogEventLogger) logHealthCheck(event HealthCheckEvent) {

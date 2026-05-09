@@ -62,6 +62,7 @@ type DependencyGraphNode struct {
 	Module    string
 	Service   string
 	Operation string
+	Eager     bool
 	Raw       bool
 }
 
@@ -400,7 +401,7 @@ func (b *dependencyGraphBuilder) connectModuleImports(path string, mod *moduleSp
 func (b *dependencyGraphBuilder) connectProviders(path string, mod *moduleSpec) {
 	mod.providers.Range(func(index int, provider ProviderFunc) bool {
 		meta := provider.meta
-		opID := b.addOperation(path, mod, "provider", meta.Label, index, meta.Raw)
+		opID := b.addOperation(path, mod, "provider", meta.Label, index, meta.Raw, meta.Eager)
 		b.connectDependencies(path, mod, opID, meta.Dependencies)
 		if meta.Output.Name != "" {
 			b.addEdge(opID, b.resolveService(path, meta.Output.Name), DependencyGraphEdgeProvides, meta.Label, path, moduleKey(mod))
@@ -430,7 +431,7 @@ func (b *dependencyGraphBuilder) connectProviders(path string, mod *moduleSpec) 
 func (b *dependencyGraphBuilder) connectSetups(path string, mod *moduleSpec) {
 	mod.setups.Range(func(index int, setup SetupFunc) bool {
 		meta := setup.meta
-		opID := b.addOperation(path, mod, "setup", meta.Label, index, meta.Raw)
+		opID := b.addOperation(path, mod, "setup", meta.Label, index, meta.Raw, false)
 		b.connectDependencies(path, mod, opID, meta.Dependencies)
 		meta.Provides.Range(func(_ int, provide ServiceRef) bool {
 			b.addEdge(opID, b.resolveService(path, provide.Name), DependencyGraphEdgeProvides, meta.Label, path, moduleKey(mod))
@@ -447,7 +448,7 @@ func (b *dependencyGraphBuilder) connectSetups(path string, mod *moduleSpec) {
 func (b *dependencyGraphBuilder) connectInvokes(path string, mod *moduleSpec) {
 	mod.invokes.Range(func(index int, invoke InvokeFunc) bool {
 		meta := invoke.meta
-		opID := b.addOperation(path, mod, "invoke", meta.Label, index, meta.Raw)
+		opID := b.addOperation(path, mod, "invoke", meta.Label, index, meta.Raw, false)
 		b.connectDependencies(path, mod, opID, meta.Dependencies)
 		return true
 	})
@@ -456,7 +457,7 @@ func (b *dependencyGraphBuilder) connectInvokes(path string, mod *moduleSpec) {
 func (b *dependencyGraphBuilder) connectHooks(path string, mod *moduleSpec) {
 	mod.hooks.Range(func(index int, hook HookFunc) bool {
 		meta := hook.meta
-		opID := b.addOperation(path, mod, string(meta.Kind)+" hook", meta.Label, index, meta.Raw)
+		opID := b.addOperation(path, mod, string(meta.Kind)+" hook", meta.Label, index, meta.Raw, false)
 		b.connectDependencies(path, mod, opID, meta.Dependencies)
 		return true
 	})
@@ -512,7 +513,7 @@ func (b *dependencyGraphBuilder) connectDependencies(
 	})
 }
 
-func (b *dependencyGraphBuilder) addOperation(path string, mod *moduleSpec, kind, label string, index int, raw bool) string {
+func (b *dependencyGraphBuilder) addOperation(path string, mod *moduleSpec, kind, label string, index int, raw, eager bool) string {
 	module := moduleKey(mod)
 	id := operationNodeID(path, module, kind, label, index)
 	b.addNode(DependencyGraphNode{
@@ -522,6 +523,7 @@ func (b *dependencyGraphBuilder) addOperation(path string, mod *moduleSpec, kind
 		App:       path,
 		Module:    module,
 		Operation: kind,
+		Eager:     eager,
 		Raw:       raw,
 	})
 	b.addEdge(b.moduleID(path, mod), id, DependencyGraphEdgeContains, kind, path, module)

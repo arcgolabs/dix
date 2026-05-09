@@ -2,6 +2,7 @@ package dix
 
 import (
 	collectionlist "github.com/arcgolabs/collectionx/list"
+	"time"
 )
 
 // ServiceRef identifies a service in the container graph.
@@ -27,6 +28,7 @@ type ProviderMetadata struct {
 	Dependencies  *collectionlist.List[ServiceRef]
 	Aliases       *collectionlist.List[ServiceRef]
 	Contributions *collectionlist.List[ContributionRef]
+	Eager         bool
 	Raw           bool
 }
 
@@ -63,6 +65,10 @@ type HookMetadata struct {
 	Label        string
 	Kind         HookKind
 	Dependencies *collectionlist.List[ServiceRef]
+	Name         string
+	Priority     int
+	Parallel     bool
+	Timeout      time.Duration
 	Raw          bool
 }
 

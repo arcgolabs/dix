@@ -1,6 +1,7 @@
 package dix
 
 import (
+	"context"
 	"errors"
 
 	"github.com/samber/do/v2"
@@ -17,6 +18,21 @@ func ResolveAs[T any](c *Container) (T, error) {
 			New("container is nil")
 	}
 	return resolveContainerAs[T](c)
+}
+
+// ResolveAsContext resolves a typed value from the container and logs resolution timing with ctx.
+//
+// The context is used for cancellation before resolution starts and for diagnostic logging.
+// Provider constructors registered in the container do not receive this context.
+func ResolveAsContext[T any](ctx context.Context, c *Container) (T, error) {
+	ctx = contextOrBackground(ctx)
+	if c == nil || c.injector == nil {
+		var zero T
+		return zero, oops.In("dix").
+			With("op", "resolve", "service", serviceNameOf[T]()).
+			New("container is nil")
+	}
+	return resolveContainerAsContext[T](ctx, c)
 }
 
 // ResolveOptionalAs resolves an optional typed value from the container.

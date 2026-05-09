@@ -17,6 +17,12 @@ func Validate(tb testing.TB, app *dix.App) dix.ValidationReport {
 	return report
 }
 
+// ValidateWith derives a test app with overrides, validates it, and fails the test on validation errors.
+func ValidateWith(tb testing.TB, app *dix.App, opts ...dix.TestOption) dix.ValidationReport {
+	tb.Helper()
+	return Validate(tb, app.Test(opts...))
+}
+
 // Build builds app and fails the test on build errors.
 func Build(tb testing.TB, app *dix.App) *dix.Runtime {
 	tb.Helper()
@@ -25,6 +31,12 @@ func Build(tb testing.TB, app *dix.App) *dix.Runtime {
 		tb.Fatalf("dix build failed: %v", err)
 	}
 	return runtime
+}
+
+// BuildWith derives a test app with overrides, builds it, and fails the test on build errors.
+func BuildWith(tb testing.TB, app *dix.App, opts ...dix.TestOption) *dix.Runtime {
+	tb.Helper()
+	return Build(tb, app.Test(opts...))
 }
 
 // Start starts app and registers test cleanup that stops the runtime.
@@ -41,6 +53,12 @@ func Start(ctx context.Context, tb testing.TB, app *dix.App) *dix.Runtime {
 		}
 	})
 	return runtime
+}
+
+// StartWith derives a test app with overrides, starts it, and registers cleanup that stops the runtime.
+func StartWith(ctx context.Context, tb testing.TB, app *dix.App, opts ...dix.TestOption) *dix.Runtime {
+	tb.Helper()
+	return Start(ctx, tb, app.Test(opts...))
 }
 
 func contextOrBackground(ctx context.Context) context.Context {

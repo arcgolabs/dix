@@ -58,7 +58,7 @@ func newRuntimeFromParts(
 		spec:        spec,
 		plan:        plan,
 		container:   container,
-		lifecycle:   newLifecycle(logger),
+		lifecycle:   newLifecycle(logger, lifecycleConcurrency(spec)),
 		logger:      logger,
 		eventLogger: eventLogger,
 		state:       AppStateCreated,
@@ -71,6 +71,13 @@ func newRuntimeFromParts(
 	rt.lifecycle.eventLogger = rt.eventLogger
 	rt.spec.rebuildObserverDispatchers(func() *slog.Logger { return rt.logger })
 	return rt
+}
+
+func lifecycleConcurrency(spec *appSpec) int {
+	if spec == nil {
+		return 0
+	}
+	return spec.lifecycleConcurrency
 }
 
 // SubApps returns built child runtimes in declaration order.

@@ -75,6 +75,20 @@ func DebugNamedServiceDependencies(names ...string) AppOption {
 	return WithDebugNamedServiceDependencies(names...)
 }
 
+// WithLifecycleConcurrency sets the worker limit for parallel lifecycle hooks.
+//
+// Non-positive values use the default runtime parallelism.
+func WithLifecycleConcurrency(concurrency int) AppOption {
+	return func(spec *appSpec) {
+		spec.lifecycleConcurrency = concurrency
+	}
+}
+
+// LifecycleConcurrency sets the worker limit for parallel lifecycle hooks.
+func LifecycleConcurrency(concurrency int) AppOption {
+	return WithLifecycleConcurrency(concurrency)
+}
+
 func defaultLogger() *slog.Logger {
 	return slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{}))
 }

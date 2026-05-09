@@ -99,48 +99,70 @@ func InspectRuntimeWithOptions(rt *dix.Runtime, opts InspectOptions, namedServic
 		return Inspection{}
 	}
 
-	var scopeTree string
-	if opts.IncludeScopeTree {
-		scopeTree = ExplainScopeTree(rt)
-	}
-
-	var provided *collectionlist.List[do.ServiceDescription]
-	if opts.IncludeProvidedServices {
-		provided = ListProvidedServices(rt)
-	}
-
-	var invoked *collectionlist.List[do.ServiceDescription]
-	if opts.IncludeInvokedServices {
-		invoked = ListInvokedServices(rt)
-	}
-
-	var namedDependencies *collectionmapping.Map[string, string]
-	if opts.IncludeNamedDeps && len(namedServices) > 0 {
-		namedDependencies = ExplainNamedDependencies(rt, namedServices...)
-	}
-
-	var dependencyGraph dix.DependencyGraph
-	if opts.IncludeDependencyGraph {
-		dependencyGraph, _ = rt.DependencyGraph()
-	}
-
-	var lifecycle dix.LifecycleSummary
-	if opts.IncludeLifecycle {
-		lifecycle = rt.LifecycleSummary()
-	}
-
-	var subapps *collectionlist.List[dix.SubAppSummary]
-	if opts.IncludeSubApps {
-		subapps = rt.SubAppSummaries()
-	}
-
 	return Inspection{
-		ScopeTree:         scopeTree,
-		ProvidedServices:  provided,
-		InvokedServices:   invoked,
-		NamedDependencies: namedDependencies,
-		DependencyGraph:   dependencyGraph,
-		Lifecycle:         lifecycle,
-		SubApps:           subapps,
+		ScopeTree:         inspectScopeTree(rt, opts.IncludeScopeTree),
+		ProvidedServices:  inspectProvidedServices(rt, opts.IncludeProvidedServices),
+		InvokedServices:   inspectInvokedServices(rt, opts.IncludeInvokedServices),
+		NamedDependencies: inspectNamedDependencies(rt, opts.IncludeNamedDeps, namedServices...),
+		DependencyGraph:   inspectDependencyGraph(rt, opts.IncludeDependencyGraph),
+		Lifecycle:         inspectLifecycle(rt, opts.IncludeLifecycle),
+		SubApps:           inspectSubApps(rt, opts.IncludeSubApps),
 	}
+}
+
+func inspectScopeTree(rt *dix.Runtime, include bool) string {
+	if !include {
+		return ""
+	}
+	return ExplainScopeTree(rt)
+}
+
+func inspectProvidedServices(rt *dix.Runtime, include bool) *collectionlist.List[do.ServiceDescription] {
+	if !include {
+		return nil
+	}
+	return ListProvidedServices(rt)
+}
+
+func inspectInvokedServices(rt *dix.Runtime, include bool) *collectionlist.List[do.ServiceDescription] {
+	if !include {
+		return nil
+	}
+	return ListInvokedServices(rt)
+}
+
+func inspectNamedDependencies(
+	rt *dix.Runtime,
+	include bool,
+	namedServices ...string,
+) *collectionmapping.Map[string, string] {
+	if !include || len(namedServices) == 0 {
+		return nil
+	}
+	return ExplainNamedDependencies(rt, namedServices...)
+}
+
+func inspectDependencyGraph(rt *dix.Runtime, include bool) dix.DependencyGraph {
+	if !include {
+		return dix.DependencyGraph{}
+	}
+	graph, err := rt.DependencyGraph()
+	if err != nil {
+		return dix.DependencyGraph{}
+	}
+	return graph
+}
+
+func inspectLifecycle(rt *dix.Runtime, include bool) dix.LifecycleSummary {
+	if !include {
+		return dix.LifecycleSummary{}
+	}
+	return rt.LifecycleSummary()
+}
+
+func inspectSubApps(rt *dix.Runtime, include bool) *collectionlist.List[dix.SubAppSummary] {
+	if !include {
+		return nil
+	}
+	return rt.SubAppSummaries()
 }

@@ -158,19 +158,19 @@ func dixInvoke4[T1, T2, T3, T4 any](c *Container, fn func(T1, T2, T3, T4)) error
 }
 
 func dixInvoke5[T1, T2, T3, T4, T5 any](c *Container, fn func(T1, T2, T3, T4, T5)) error {
-	t1, t2, t3, t4, t5, err := resolveDependencies5[T1, T2, T3, T4, T5](c.Raw())
+	deps, err := resolveDependencies5[T1, T2, T3, T4, T5](c.Raw())
 	if err != nil {
 		return err
 	}
-	fn(t1, t2, t3, t4, t5)
+	fn(deps.First, deps.Second, deps.Third, deps.Fourth, deps.Fifth)
 	return nil
 }
 
 func dixInvoke6[T1, T2, T3, T4, T5, T6 any](c *Container, fn func(T1, T2, T3, T4, T5, T6)) error {
-	t1, t2, t3, t4, t5, t6, err := resolveDependencies6[T1, T2, T3, T4, T5, T6](c.Raw())
+	deps, err := resolveDependencies6[T1, T2, T3, T4, T5, T6](c.Raw())
 	if err != nil {
 		return err
 	}
-	fn(t1, t2, t3, t4, t5, t6)
+	fn(deps.First, deps.Second, deps.Third, deps.Fourth, deps.Fifth, deps.Sixth)
 	return nil
 }

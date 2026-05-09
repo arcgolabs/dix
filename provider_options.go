@@ -12,7 +12,7 @@ import (
 
 var anonymousContributionID atomic.Uint64
 
-// ProviderOption configures extra provider outputs such as aliases and collection contributions.
+// ProviderOption configures provider metadata such as aliases, collection contributions, and eager warmup.
 type ProviderOption func(*providerOptions)
 
 // ContributionOption configures a provider contribution to a collection role.
@@ -21,6 +21,7 @@ type ContributionOption func(*contributionOptions)
 type providerOptions struct {
 	aliases       *collectionlist.List[aliasSpec]
 	contributions *collectionlist.List[contributionOptionSpec]
+	eager         bool
 }
 
 type aliasSpec struct {
@@ -98,6 +99,15 @@ func Into[T any](options ...ContributionOption) ProviderOption {
 	}
 }
 
+// Eager resolves this provider during Runtime build instead of waiting for the first consumer.
+func Eager() ProviderOption {
+	return func(opts *providerOptions) {
+		if opts != nil {
+			opts.eager = true
+		}
+	}
+}
+
 func collectionServiceRefs[T any]() *collectionlist.List[ServiceRef] {
 	return ServiceRefs(
 		TypedService[*collectionlist.List[T]](),
@@ -150,6 +160,7 @@ func newTypedProviderFunc[T any](
 			Dependencies:  deps,
 			Aliases:       aliases,
 			Contributions: contributions,
+			Eager:         providerOpts.eager,
 		},
 		factories,
 	)

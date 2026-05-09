@@ -92,6 +92,47 @@ func TestBuildDebugLogging(t *testing.T) {
 	assert.True(t, strings.Contains(logs, "binding lifecycle hook"), logs)
 	assert.True(t, strings.Contains(logs, "module setup completed"), logs)
 	assert.True(t, strings.Contains(logs, "invoke completed"), logs)
+	assert.True(t, strings.Contains(logs, "service resolved"), logs)
+	assert.True(t, strings.Contains(logs, "duration"), logs)
+}
+
+func TestResolveAsContextLogsResolutionDuration(t *testing.T) {
+	logger, buf := newDebugLogger()
+	app := dix.New("resolve-context",
+		dix.UseLogger(logger),
+		dix.Modules(
+			dix.NewModule("resolve-context",
+				dix.Providers(dix.Value("value")),
+			),
+		),
+	)
+
+	rt := buildRuntime(t, app)
+	value, err := dix.ResolveAsContext[string](context.Background(), rt.Container())
+	require.NoError(t, err)
+	assert.Equal(t, "value", value)
+
+	logs := buf.String()
+	assert.Contains(t, logs, "service resolved")
+	assert.Contains(t, logs, "op=resolve")
+	assert.Contains(t, logs, "duration")
+}
+
+func TestResolveAsContextHonorsCanceledContextBeforeResolution(t *testing.T) {
+	app := dix.New("resolve-context-canceled",
+		dix.Modules(
+			dix.NewModule("resolve-context-canceled",
+				dix.Providers(dix.Value("value")),
+			),
+		),
+	)
+
+	rt := buildRuntime(t, app)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	_, err := dix.ResolveAsContext[string](ctx, rt.Container())
+	require.ErrorIs(t, err, context.Canceled)
 }
 
 func TestWithLoggerRoutesInternalEventsThroughSlog(t *testing.T) {
@@ -214,6 +255,148 @@ func TestRuntimeStartRollbackDebugLogging(t *testing.T) {
 	assert.True(t, strings.Contains(logs, "rolling back app start"), logs)
 	assert.True(t, strings.Contains(logs, "executing stop hook"), logs)
 	assert.True(t, strings.Contains(logs, "shutting down container"), logs)
+}
+
+func TestLifecyclePriorityOrdersStartAndStop(t *testing.T) {
+	var mu sync.Mutex
+	events := make([]string, 0, 4)
+	record := func(event string) {
+		mu.Lock()
+		defer mu.Unlock()
+		events = append(events, event)
+	}
+
+	app := dix.New("lifecycle-priority",
+		dix.Modules(
+			dix.NewModule("lifecycle",
+				dix.Hooks(
+					dix.OnStart0(func(context.Context) error {
+						record("start:late")
+						return nil
+					}, dix.LifecycleName("late"), dix.LifecyclePriority(20)),
+					dix.OnStart0(func(context.Context) error {
+						record("start:early")
+						return nil
+					}, dix.LifecycleName("early"), dix.LifecyclePriority(10)),
+					dix.OnStop0(func(context.Context) error {
+						record("stop:late")
+						return nil
+					}, dix.LifecycleName("late"), dix.LifecyclePriority(20)),
+					dix.OnStop0(func(context.Context) error {
+						record("stop:early")
+						return nil
+					}, dix.LifecycleName("early"), dix.LifecyclePriority(10)),
+				),
+			),
+		),
+	)
+
+	rt := buildRuntime(t, app)
+	summary := rt.LifecycleSummary()
+	require.Equal(t, 2, summary.StartHooks)
+	require.Equal(t, 2, summary.StopHooks)
+	assert.Equal(t, "early", summary.Start.Values()[0].Name)
+	assert.Equal(t, "late", summary.Start.Values()[1].Name)
+	assert.Equal(t, "late", summary.Stop.Values()[0].Name)
+	assert.Equal(t, "early", summary.Stop.Values()[1].Name)
+
+	require.NoError(t, rt.Start(context.Background()))
+	require.NoError(t, rt.Stop(context.Background()))
+
+	mu.Lock()
+	defer mu.Unlock()
+	assert.Equal(t, []string{"start:early", "start:late", "stop:late", "stop:early"}, events)
+}
+
+func TestLifecycleParallelHooksRunTogether(t *testing.T) {
+	started := make(chan string, 2)
+	release := make(chan struct{})
+
+	parallelHook := func(name string) func(context.Context) error {
+		return func(ctx context.Context) error {
+			started <- name
+			select {
+			case <-release:
+				return nil
+			case <-ctx.Done():
+				return ctx.Err()
+			}
+		}
+	}
+
+	app := dix.New("lifecycle-parallel",
+		dix.LifecycleConcurrency(2),
+		dix.Modules(
+			dix.NewModule("lifecycle",
+				dix.Hooks(
+					dix.OnStart0(parallelHook("first"),
+						dix.LifecycleName("first"),
+						dix.LifecyclePriority(10),
+						dix.LifecycleParallel(),
+					),
+					dix.OnStart0(parallelHook("second"),
+						dix.LifecycleName("second"),
+						dix.LifecyclePriority(10),
+						dix.LifecycleParallel(),
+					),
+				),
+			),
+		),
+	)
+
+	rt := buildRuntime(t, app)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- rt.Start(ctx)
+	}()
+
+	seen := map[string]bool{}
+	for len(seen) < 2 {
+		select {
+		case name := <-started:
+			seen[name] = true
+		case <-time.After(2 * time.Second):
+			t.Fatal("parallel lifecycle hooks did not start together")
+		}
+	}
+
+	close(release)
+
+	select {
+	case err := <-errCh:
+		require.NoError(t, err)
+	case <-time.After(2 * time.Second):
+		t.Fatal("parallel lifecycle hooks did not finish")
+	}
+	require.NoError(t, rt.Stop(context.Background()))
+}
+
+func TestLifecycleTimeoutPassesDeadlineContext(t *testing.T) {
+	const timeout = 20 * time.Millisecond
+
+	app := dix.New("lifecycle-timeout",
+		dix.Modules(
+			dix.NewModule("lifecycle",
+				dix.Hooks(
+					dix.OnStart0(func(ctx context.Context) error {
+						<-ctx.Done()
+						return ctx.Err()
+					}, dix.LifecycleName("deadline"), dix.LifecycleTimeout(timeout)),
+				),
+			),
+		),
+	)
+
+	rt := buildRuntime(t, app)
+	summary := rt.LifecycleSummary()
+	require.Equal(t, 1, summary.StartHooks)
+	assert.Equal(t, timeout, summary.Start.Values()[0].Timeout)
+
+	err := rt.Start(context.Background())
+	require.ErrorIs(t, err, context.DeadlineExceeded)
 }
 
 func TestHealthCheckReport(t *testing.T) {

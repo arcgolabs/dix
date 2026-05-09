@@ -106,11 +106,11 @@ func Setup4[D1, D2, D3, D4 any](fn func(D1, D2, D3, D4) error) SetupFunc {
 // Setup5 registers a typed setup callback with five resolved dependencies.
 func Setup5[D1, D2, D3, D4, D5 any](fn func(D1, D2, D3, D4, D5) error) SetupFunc {
 	return NewSetupFunc(func(c *Container, _ Lifecycle) error {
-		d1, d2, d3, d4, d5, err := resolveDependencies5[D1, D2, D3, D4, D5](c.Raw())
+		deps, err := resolveDependencies5[D1, D2, D3, D4, D5](c.Raw())
 		if err != nil {
 			return err
 		}
-		return fn(d1, d2, d3, d4, d5)
+		return fn(deps.First, deps.Second, deps.Third, deps.Fourth, deps.Fifth)
 	}, SetupMetadata{
 		Label: "Setup5",
 		Dependencies: ServiceRefs(
@@ -126,11 +126,11 @@ func Setup5[D1, D2, D3, D4, D5 any](fn func(D1, D2, D3, D4, D5) error) SetupFunc
 // Setup6 registers a typed setup callback with six resolved dependencies.
 func Setup6[D1, D2, D3, D4, D5, D6 any](fn func(D1, D2, D3, D4, D5, D6) error) SetupFunc {
 	return NewSetupFunc(func(c *Container, _ Lifecycle) error {
-		d1, d2, d3, d4, d5, d6, err := resolveDependencies6[D1, D2, D3, D4, D5, D6](c.Raw())
+		deps, err := resolveDependencies6[D1, D2, D3, D4, D5, D6](c.Raw())
 		if err != nil {
 			return err
 		}
-		return fn(d1, d2, d3, d4, d5, d6)
+		return fn(deps.First, deps.Second, deps.Third, deps.Fourth, deps.Fifth, deps.Sixth)
 	}, SetupMetadata{
 		Label: "Setup6",
 		Dependencies: ServiceRefs(

@@ -102,6 +102,7 @@ type appSpec struct {
 	observersConfigured      bool
 	subapps                  *collectionlist.List[*App]
 	runStopTimeout           time.Duration
+	lifecycleConcurrency     int
 	versionConfigured        bool
 	descriptionConfigured    bool
 	debug                    debugSettings

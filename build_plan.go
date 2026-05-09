@@ -149,16 +149,27 @@ func (p *buildPlan) registerProviders(ctx context.Context, rt *Runtime, debugEna
 			)
 		}
 		mod.providers.Range(func(_ int, provider ProviderFunc) bool {
+			startedAt := time.Now()
 			if debugEnabled {
 				rt.logMessage(ctx, EventLevelDebug, "registering provider",
 					"module", mod.name,
 					"label", provider.meta.Label,
 					"output", provider.meta.Output.Name,
 					"dependencies", serviceRefNames(provider.meta.Dependencies),
+					"eager", provider.meta.Eager,
 					"raw", provider.meta.Raw,
 				)
 			}
 			provider.apply(rt.container)
+			if debugEnabled {
+				rt.logMessage(ctx, EventLevelDebug, "provider registered",
+					"module", mod.name,
+					"label", provider.meta.Label,
+					"output", provider.meta.Output.Name,
+					"eager", provider.meta.Eager,
+					"duration", time.Since(startedAt),
+				)
+			}
 			return true
 		})
 		return true
@@ -183,6 +194,7 @@ func (p *buildPlan) logProviderRegistrations(ctx context.Context, rt *Runtime, d
 				"label", provider.meta.Label,
 				"output", provider.meta.Output.Name,
 				"dependencies", serviceRefNames(provider.meta.Dependencies),
+				"eager", provider.meta.Eager,
 				"raw", provider.meta.Raw,
 			)
 			return true
@@ -207,7 +219,10 @@ func bindModuleHooks(ctx context.Context, mod *moduleSpec, rt *Runtime, debugEna
 			rt.logMessage(ctx, EventLevelDebug, "binding lifecycle hook",
 				"module", mod.name,
 				"label", hook.meta.Label,
+				"name", hook.meta.Name,
 				"kind", hook.meta.Kind,
+				"priority", hook.meta.Priority,
+				"parallel", hook.meta.Parallel,
 				"dependencies", serviceRefNames(hook.meta.Dependencies),
 				"raw", hook.meta.Raw,
 			)
@@ -215,68 +230,4 @@ func bindModuleHooks(ctx context.Context, mod *moduleSpec, rt *Runtime, debugEna
 		hook.bind(rt.container, rt.lifecycle)
 		return true
 	})
-}
-
-func runModuleSetups(ctx context.Context, mod *moduleSpec, rt *Runtime, debugEnabled bool) error {
-	var setupErr error
-	mod.setups.Range(func(_ int, setup SetupFunc) bool {
-		if debugEnabled {
-			rt.logMessage(ctx, EventLevelDebug, "running module setup",
-				"module", mod.name,
-				"label", setup.meta.Label,
-				"dependencies", serviceRefNames(setup.meta.Dependencies),
-				"provides", serviceRefNames(setup.meta.Provides),
-				"overrides", serviceRefNames(setup.meta.Overrides),
-				"graph_mutation", setup.meta.GraphMutation,
-				"raw", setup.meta.Raw,
-			)
-		}
-		if err := setup.apply(rt.container, rt.lifecycle); err != nil {
-			rt.logMessage(ctx, EventLevelError, "module setup failed", "module", mod.name, "label", setup.meta.Label, "error", err)
-			setupErr = oops.In("dix").
-				With("op", "module_setup", "module", mod.name, "label", setup.meta.Label).
-				Wrapf(err, "setup failed for module %s via %s", mod.name, setup.meta.Label)
-			return false
-		}
-		if debugEnabled {
-			rt.logMessage(ctx, EventLevelDebug, "module setup completed", "module", mod.name, "label", setup.meta.Label)
-		}
-		return true
-	})
-	return setupErr
-}
-
-func (p *buildPlan) runInvokes(ctx context.Context, rt *Runtime, debugEnabled bool) error {
-	var buildErr error
-	p.modules.Range(func(_ int, mod *moduleSpec) bool {
-		buildErr = runModuleInvokes(ctx, mod, rt, debugEnabled)
-		return buildErr == nil
-	})
-	return buildErr
-}
-
-func runModuleInvokes(ctx context.Context, mod *moduleSpec, rt *Runtime, debugEnabled bool) error {
-	var invokeErr error
-	mod.invokes.Range(func(_ int, invoke InvokeFunc) bool {
-		if debugEnabled {
-			rt.logMessage(ctx, EventLevelDebug, "running invoke",
-				"module", mod.name,
-				"label", invoke.meta.Label,
-				"dependencies", serviceRefNames(invoke.meta.Dependencies),
-				"raw", invoke.meta.Raw,
-			)
-		}
-		invokeErr = invoke.apply(rt.container)
-		if invokeErr == nil && debugEnabled {
-			rt.logMessage(ctx, EventLevelDebug, "invoke completed", "module", mod.name, "label", invoke.meta.Label)
-		}
-		return invokeErr == nil
-	})
-	if invokeErr != nil {
-		rt.logMessage(ctx, EventLevelError, "invoke failed", "module", mod.name, "error", invokeErr)
-		return oops.In("dix").
-			With("op", "module_invoke", "module", mod.name).
-			Wrapf(invokeErr, "invoke failed in module %s", mod.name)
-	}
-	return nil
 }

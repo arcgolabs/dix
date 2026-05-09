@@ -22,6 +22,16 @@ func TestBuildAndValidateHelpers(t *testing.T) {
 	require.Equal(t, "value", value)
 }
 
+func TestBuildWithAppliesTestOverrides(t *testing.T) {
+	t.Parallel()
+
+	app := dix.New("test", dix.Modules(dix.NewModule("mod", dix.Providers(dix.Value("prod")))))
+
+	runtime := testx.BuildWith(t, app, dix.TestValue("mock"))
+	value := dix.MustResolveAs[string](runtime.Container())
+	require.Equal(t, "mock", value)
+}
+
 func TestStartHelperStopsRuntime(t *testing.T) {
 	app := dix.New("test")
 

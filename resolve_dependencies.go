@@ -2,6 +2,23 @@ package dix
 
 import "github.com/samber/do/v2"
 
+type resolvedDependencies5[D1, D2, D3, D4, D5 any] struct {
+	First  D1
+	Second D2
+	Third  D3
+	Fourth D4
+	Fifth  D5
+}
+
+type resolvedDependencies6[D1, D2, D3, D4, D5, D6 any] struct {
+	First  D1
+	Second D2
+	Third  D3
+	Fourth D4
+	Fifth  D5
+	Sixth  D6
+}
+
 func resolveDependency1[D1 any](injector do.Injector) (D1, error) {
 	return resolveInjectorAs[D1](injector)
 }
@@ -49,32 +66,39 @@ func resolveDependencies4[D1, D2, D3, D4 any](injector do.Injector) (D1, D2, D3,
 	return d1, d2, d3, d4, nil
 }
 
-//nolint:gocritic // Typed DI helpers intentionally return each dependency plus an error for generated hook signatures.
-func resolveDependencies5[D1, D2, D3, D4, D5 any](injector do.Injector) (D1, D2, D3, D4, D5, error) {
+func resolveDependencies5[D1, D2, D3, D4, D5 any](injector do.Injector) (resolvedDependencies5[D1, D2, D3, D4, D5], error) {
 	d1, d2, d3, d4, err := resolveDependencies4[D1, D2, D3, D4](injector)
 	if err != nil {
-		var zeroD5 D5
-		return d1, d2, d3, d4, zeroD5, err
+		return resolvedDependencies5[D1, D2, D3, D4, D5]{}, err
 	}
 	d5, err := resolveInjectorAs[D5](injector)
 	if err != nil {
-		var zeroD5 D5
-		return d1, d2, d3, d4, zeroD5, err
+		return resolvedDependencies5[D1, D2, D3, D4, D5]{}, err
 	}
-	return d1, d2, d3, d4, d5, nil
+	return resolvedDependencies5[D1, D2, D3, D4, D5]{
+		First:  d1,
+		Second: d2,
+		Third:  d3,
+		Fourth: d4,
+		Fifth:  d5,
+	}, nil
 }
 
-//nolint:gocritic // Typed DI helpers intentionally return each dependency plus an error for generated hook signatures.
-func resolveDependencies6[D1, D2, D3, D4, D5, D6 any](injector do.Injector) (D1, D2, D3, D4, D5, D6, error) {
-	d1, d2, d3, d4, d5, err := resolveDependencies5[D1, D2, D3, D4, D5](injector)
+func resolveDependencies6[D1, D2, D3, D4, D5, D6 any](injector do.Injector) (resolvedDependencies6[D1, D2, D3, D4, D5, D6], error) {
+	deps, err := resolveDependencies5[D1, D2, D3, D4, D5](injector)
 	if err != nil {
-		var zeroD6 D6
-		return d1, d2, d3, d4, d5, zeroD6, err
+		return resolvedDependencies6[D1, D2, D3, D4, D5, D6]{}, err
 	}
 	d6, err := resolveInjectorAs[D6](injector)
 	if err != nil {
-		var zeroD6 D6
-		return d1, d2, d3, d4, d5, zeroD6, err
+		return resolvedDependencies6[D1, D2, D3, D4, D5, D6]{}, err
 	}
-	return d1, d2, d3, d4, d5, d6, nil
+	return resolvedDependencies6[D1, D2, D3, D4, D5, D6]{
+		First:  deps.First,
+		Second: deps.Second,
+		Third:  deps.Third,
+		Fourth: deps.Fourth,
+		Fifth:  deps.Fifth,
+		Sixth:  d6,
+	}, nil
 }

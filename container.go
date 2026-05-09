@@ -6,18 +6,21 @@ import (
 	"fmt"
 	collectionlist "github.com/arcgolabs/collectionx/list"
 	"github.com/samber/do/v2"
+	"github.com/samber/oops"
 	"log/slog"
+	"time"
 )
 
 // Container wraps samber/do.Injector.
 // Most code should stay on the typed dix helpers.
 // Raw() exists as an explicit escape hatch for advanced integrations.
 type Container struct {
-	injector     do.Injector
-	serviceNames *serviceNamer
-	healthChecks *collectionlist.List[healthCheckEntry]
-	logger       *slog.Logger
-	eventLogger  EventLogger
+	injector                 do.Injector
+	serviceNames             *serviceNamer
+	healthChecks             *collectionlist.List[healthCheckEntry]
+	logger                   *slog.Logger
+	eventLogger              EventLogger
+	resolutionLoggingEnabled bool
 }
 
 func newContainer(logger *slog.Logger) *Container {
@@ -104,6 +107,21 @@ func resolveContainerAs[T any](c *Container) (T, error) {
 	return do.InvokeNamed[T](c.injector, serviceNameOfWith[T](c.serviceNames))
 }
 
+func resolveContainerAsContext[T any](ctx context.Context, c *Container) (T, error) {
+	name := serviceNameOfWith[T](c.serviceNames)
+	if err := ctx.Err(); err != nil {
+		var zero T
+		c.logServiceResolution(ctx, name, "resolve", 0, err)
+		return zero, oops.In("dix").
+			With("op", "resolve", "service", name).
+			Wrapf(err, "resolve context canceled")
+	}
+	startedAt := time.Now()
+	value, err := do.InvokeNamed[T](c.injector, name)
+	c.logServiceResolution(ctx, name, "resolve", time.Since(startedAt), err)
+	return value, err
+}
+
 // ProvideT registers a typed singleton provider with no dependencies.
 func ProvideT[T any](c *Container, fn func() T) {
 	ProvideTErr(c, func() (T, error) { return fn(), nil })
@@ -111,7 +129,8 @@ func ProvideT[T any](c *Container, fn func() T) {
 
 // ProvideTErr registers a typed singleton provider with no dependencies.
 func ProvideTErr[T any](c *Container, fn func() (T, error)) {
-	do.ProvideNamed(c.injector, serviceNameOfWith[T](c.serviceNames), func(_ do.Injector) (T, error) { return fn() })
+	name := serviceNameOfWith[T](c.serviceNames)
+	provideNamedTimed(c, name, func(_ do.Injector) (T, error) { return fn() })
 }
 
 // Provide1T registers a typed singleton provider with one dependency.
@@ -121,7 +140,8 @@ func Provide1T[T, D1 any](c *Container, fn func(D1) T) {
 
 // Provide1TErr registers a typed singleton provider with one dependency.
 func Provide1TErr[T, D1 any](c *Container, fn func(D1) (T, error)) {
-	do.ProvideNamed(c.injector, serviceNameOfWith[T](c.serviceNames), func(i do.Injector) (T, error) {
+	name := serviceNameOfWith[T](c.serviceNames)
+	provideNamedTimed(c, name, func(i do.Injector) (T, error) {
 		d1, err := resolveDependency1[D1](i)
 		if err != nil {
 			var zero T
@@ -138,7 +158,8 @@ func Provide2T[T, D1, D2 any](c *Container, fn func(D1, D2) T) {
 
 // Provide2TErr registers a typed singleton provider with two dependencies.
 func Provide2TErr[T, D1, D2 any](c *Container, fn func(D1, D2) (T, error)) {
-	do.ProvideNamed(c.injector, serviceNameOfWith[T](c.serviceNames), func(i do.Injector) (T, error) {
+	name := serviceNameOfWith[T](c.serviceNames)
+	provideNamedTimed(c, name, func(i do.Injector) (T, error) {
 		d1, d2, err := resolveDependencies2[D1, D2](i)
 		if err != nil {
 			var zero T
@@ -155,7 +176,8 @@ func Provide3T[T, D1, D2, D3 any](c *Container, fn func(D1, D2, D3) T) {
 
 // Provide3TErr registers a typed singleton provider with three dependencies.
 func Provide3TErr[T, D1, D2, D3 any](c *Container, fn func(D1, D2, D3) (T, error)) {
-	do.ProvideNamed(c.injector, serviceNameOfWith[T](c.serviceNames), func(i do.Injector) (T, error) {
+	name := serviceNameOfWith[T](c.serviceNames)
+	provideNamedTimed(c, name, func(i do.Injector) (T, error) {
 		d1, d2, d3, err := resolveDependencies3[D1, D2, D3](i)
 		if err != nil {
 			var zero T
@@ -172,7 +194,8 @@ func Provide4T[T, D1, D2, D3, D4 any](c *Container, fn func(D1, D2, D3, D4) T) {
 
 // Provide4TErr registers a typed singleton provider with four dependencies.
 func Provide4TErr[T, D1, D2, D3, D4 any](c *Container, fn func(D1, D2, D3, D4) (T, error)) {
-	do.ProvideNamed(c.injector, serviceNameOfWith[T](c.serviceNames), func(i do.Injector) (T, error) {
+	name := serviceNameOfWith[T](c.serviceNames)
+	provideNamedTimed(c, name, func(i do.Injector) (T, error) {
 		d1, d2, d3, d4, err := resolveDependencies4[D1, D2, D3, D4](i)
 		if err != nil {
 			var zero T
@@ -191,13 +214,14 @@ func Provide5T[T, D1, D2, D3, D4, D5 any](c *Container, fn func(D1, D2, D3, D4, 
 
 // Provide5TErr registers a typed singleton provider with five dependencies.
 func Provide5TErr[T, D1, D2, D3, D4, D5 any](c *Container, fn func(D1, D2, D3, D4, D5) (T, error)) {
-	do.ProvideNamed(c.injector, serviceNameOfWith[T](c.serviceNames), func(i do.Injector) (T, error) {
-		d1, d2, d3, d4, d5, err := resolveDependencies5[D1, D2, D3, D4, D5](i)
+	name := serviceNameOfWith[T](c.serviceNames)
+	provideNamedTimed(c, name, func(i do.Injector) (T, error) {
+		deps, err := resolveDependencies5[D1, D2, D3, D4, D5](i)
 		if err != nil {
 			var zero T
 			return zero, err
 		}
-		return fn(d1, d2, d3, d4, d5)
+		return fn(deps.First, deps.Second, deps.Third, deps.Fourth, deps.Fifth)
 	})
 }
 
@@ -210,17 +234,45 @@ func Provide6T[T, D1, D2, D3, D4, D5, D6 any](c *Container, fn func(D1, D2, D3, 
 
 // Provide6TErr registers a typed singleton provider with six dependencies.
 func Provide6TErr[T, D1, D2, D3, D4, D5, D6 any](c *Container, fn func(D1, D2, D3, D4, D5, D6) (T, error)) {
-	do.ProvideNamed(c.injector, serviceNameOfWith[T](c.serviceNames), func(i do.Injector) (T, error) {
-		d1, d2, d3, d4, d5, d6, err := resolveDependencies6[D1, D2, D3, D4, D5, D6](i)
+	name := serviceNameOfWith[T](c.serviceNames)
+	provideNamedTimed(c, name, func(i do.Injector) (T, error) {
+		deps, err := resolveDependencies6[D1, D2, D3, D4, D5, D6](i)
 		if err != nil {
 			var zero T
 			return zero, err
 		}
-		return fn(d1, d2, d3, d4, d5, d6)
+		return fn(deps.First, deps.Second, deps.Third, deps.Fourth, deps.Fifth, deps.Sixth)
 	})
 }
 
 // ProvideValueT registers a typed singleton value.
 func ProvideValueT[T any](c *Container, value T) {
 	do.ProvideNamedValue(c.injector, serviceNameOfWith[T](c.serviceNames), value)
+}
+
+func provideNamedTimed[T any](c *Container, name string, fn func(do.Injector) (T, error)) {
+	do.ProvideNamed(c.injector, name, func(i do.Injector) (T, error) {
+		startedAt := time.Now()
+		value, err := fn(i)
+		c.logServiceResolution(context.Background(), name, "construct", time.Since(startedAt), err)
+		return value, err
+	})
+}
+
+func (c *Container) logServiceResolution(ctx context.Context, name, op string, duration time.Duration, err error) {
+	if c == nil || !c.resolutionLoggingEnabled {
+		return
+	}
+	level := EventLevelDebug
+	message := "service resolved"
+	if err != nil {
+		level = EventLevelError
+		message = "service resolution failed"
+	}
+	logMessageEvent(ctx, c.eventLogger, level, message,
+		"op", op,
+		"service", name,
+		"duration", duration,
+		"error", err,
+	)
 }

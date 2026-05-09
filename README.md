@@ -9,7 +9,7 @@ and a runtime model without forcing most users to deal with `do` directly.
 - **Immutable spec**: `App` and `Module` are built as declarative specs.
 - **Typed DI**: `ProviderN` registers typed constructors; `InvokeN` runs typed eager initialization.
 - **Collection contributions**: `Into[T]` and `ContributeN[T]` collect distributed providers into typed slices, maps, and `collectionx` containers.
-- **Lifecycle**: `OnStart` / `OnStop` hooks with `Runtime.Start/Stop/StopWithReport`.
+- **Lifecycle**: `OnStart` / `OnStop` hooks with priority, opt-in parallel execution, and `Runtime.Start/Stop/StopWithReport`.
 - **Validation**: `app.Validate()` fails on graph errors; `app.ValidateReport()` also exposes validation warnings and missing-dependency suggestions for raw escape hatches.
 - **Dependency graph**: `app.DependencyGraph()` / `app.Explain()` expose a static build graph, Graphviz DOT output, and topological order.
 - **SubApps**: `SubApps(...)` builds child apps in child `do` scopes while inheriting parent services.
@@ -52,8 +52,12 @@ go get github.com/arcgolabs/dix@latest
 - `dix.WithModuleProviders(...)`, `dix.WithModuleHooks(...)`, `dix.WithModuleImports(...)`
 - `dix.WithModuleProvider(...)`, `dix.WithModuleHook(...)`, `dix.WithModuleImport(...)`
 - `dix.Value(...)`, `dix.Invoke(...)`, `dix.ProviderN(...)`, `dix.OnStart(...)`, `dix.OnStop(...)`
+- `dix.ResolveAs(...)`, `dix.ResolveAsContext(ctx, ...)`
+- `dix.Eager(...)`
+- `dix.LifecycleName(...)`, `dix.LifecyclePriority(...)`, `dix.LifecycleParallel(...)`, `dix.LifecycleTimeout(...)`, `dix.LifecycleConcurrency(...)`
 - `dix.As[T]()`, `dix.Into[T](...)`, `dix.Key(...)`, `dix.Order(...)`, `dix.ContributeN[T](...)`
 - `dix.SubApps(...)`, `dix.NewSubApp(...)`, `app.DependencyGraph()`, `app.Explain()`
+- `app.Test(...)`, `dix.TestValue(...)`, `dix.TestProviders(...)`, `dix.TestDisableModules(...)`
 - `rt.LifecycleSummary()`, `rt.SubAppSummaries()`, `rt.ScopePath()`
 - `advanced.Named(...)`, `advanced.Alias(...)`, `advanced.NamedAlias(...)`, `advanced.Transient(...)`, `advanced.Override(...)`
 - `testx.Validate(t, app)`, `testx.Build(t, app)`, `testx.Start(ctx, t, app)`
@@ -71,6 +75,7 @@ go get github.com/arcgolabs/dix@latest
 - For zero-dependency registrations, `Value(...)` and `Invoke(...)` reduce the remaining boilerplate on the core path.
 - Use `As[T]` for a unique typed alias, and `Into[T]` / `ContributeN[T]` for multi-binding collection roles. Collection consumers can depend directly on `[]T`, `collectionx.List[T]`, `map[string]T`, `collectionx.Map[string, T]`, or `collectionx.OrderedMap[string, T]`.
 - Use `SubApps(...)` when a child app should share parent services but keep its own modules, lifecycle hooks, and child `do` scope.
+- Lifecycle hooks start by ascending priority and stop by descending priority. Hooks remain serial unless `LifecycleParallel()` is set, in which case adjacent hooks with the same priority can run through the configured lifecycle worker pool. Use `LifecycleTimeout(...)` to pass an individual hook a deadline-aware context.
 - In `dix/advanced`, the shorter aliases such as `Named(...)`, `Alias(...)`, `Transient(...)`, and `Override(...)` keep the same semantics as the older explicit names.
 - When you want the common build-then-start flow, prefer `app.Start(ctx)`; use `app.Build()` when you need an explicit pre-start runtime handle.
 - When the caller owns cancellation or shutdown timing, prefer `app.RunContext(ctx)` over `app.Run()`.
@@ -104,6 +109,38 @@ fmt.Println("nodes:", order.Len())
 `DependencyGraph.Directed()` returns a clone of the underlying `collectionx/graph` directed graph for callers that need lower-level traversal.
 `advanced.InspectRuntime(...)` also includes the dependency graph, lifecycle summary, and subapp summaries.
 
+## Lifecycle scheduling and build logs
+
+```go
+app := dix.New("worker",
+	dix.LifecycleConcurrency(4),
+	dix.Modules(dix.NewModule("runtime",
+		dix.Hooks(
+			dix.OnStart0(startCache, dix.LifecycleName("cache"), dix.LifecyclePriority(10), dix.LifecycleParallel()),
+			dix.OnStart0(startQueue, dix.LifecycleName("queue"), dix.LifecyclePriority(10), dix.LifecycleParallel(), dix.LifecycleTimeout(10 * time.Second)),
+			dix.OnStop0(stopQueue, dix.LifecycleName("queue"), dix.LifecyclePriority(10), dix.LifecycleParallel()),
+			dix.OnStop0(stopCache, dix.LifecycleName("cache"), dix.LifecyclePriority(10), dix.LifecycleParallel()),
+		),
+	)),
+)
+```
+
+Build, start, stop, setup, invoke, provider construction, and explicit `ResolveAsContext` diagnostics include duration fields when debug logging is enabled.
+
+## Eager providers
+
+Providers stay lazy by default. Use `Eager()` when build should fail fast and construct a service before runtime start:
+
+```go
+dbModule := dix.NewModule("db",
+	dix.Providers(
+		dix.Provider1(NewDatabase, dix.Eager()),
+	),
+)
+```
+
+Eager warmup runs after provider registration and setup, before invokes and subapp build. Raw eager providers must declare `ProviderMetadata.Output` so `dix` knows which service to resolve.
+
 ## Integration guide
 
 - **configx**: load typed config once, then provide it as dependencies in modules.
@@ -120,6 +157,15 @@ go test -run ^$ -bench . -benchmem
 ```
 
 For package tests, `dix/testx` provides small helpers that fail `testing.TB` on validation, build, start, or cleanup errors.
+
+```go
+runtime := testx.BuildWith(t, app,
+	dix.TestDisableModules("db"),
+	dix.TestValue[Store](mockStore),
+)
+```
+
+`app.Test(...)` derives a test-only App without mutating the original spec. Test providers replace matching provider outputs or aliases before validation, so disabled modules can be replaced with mocks while keeping the normal static dependency checks.
 
 ## Production notes
 

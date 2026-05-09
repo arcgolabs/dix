@@ -1,11 +1,28 @@
 package dix
 
-import collectionlist "github.com/arcgolabs/collectionx/list"
+import (
+	collectionlist "github.com/arcgolabs/collectionx/list"
+	"time"
+)
 
 // LifecycleSummary reports lifecycle hooks registered on a built runtime.
 type LifecycleSummary struct {
-	StartHooks int
-	StopHooks  int
+	StartHooks  int
+	StopHooks   int
+	Start       *collectionlist.List[LifecycleHookSummary]
+	Stop        *collectionlist.List[LifecycleHookSummary]
+	Concurrency int
+}
+
+// LifecycleHookSummary reports one registered lifecycle hook.
+type LifecycleHookSummary struct {
+	Name     string
+	Label    string
+	Kind     HookKind
+	Priority int
+	Parallel bool
+	Timeout  time.Duration
+	Sequence int
 }
 
 // SubAppSummary reports one built child runtime.
@@ -23,9 +40,28 @@ func (r *Runtime) LifecycleSummary() LifecycleSummary {
 		return LifecycleSummary{}
 	}
 	return LifecycleSummary{
-		StartHooks: r.lifecycle.startHooks.Len(),
-		StopHooks:  r.lifecycle.stopHooks.Len(),
+		StartHooks:  r.lifecycle.startHooks.Len(),
+		StopHooks:   r.lifecycle.stopHooks.Len(),
+		Start:       lifecycleHookSummaries(r.lifecycle.startOrder(r.lifecycle.startHooks)),
+		Stop:        lifecycleHookSummaries(r.lifecycle.stopOrder(r.lifecycle.stopHooks)),
+		Concurrency: r.lifecycle.resolvedConcurrency(),
 	}
+}
+
+func lifecycleHookSummaries(entries []lifecycleHookEntry) *collectionlist.List[LifecycleHookSummary] {
+	summaries := collectionlist.NewListWithCapacity[LifecycleHookSummary](len(entries))
+	for _, entry := range entries {
+		summaries.Add(LifecycleHookSummary{
+			Name:     hookName(entry.meta),
+			Label:    entry.meta.Label,
+			Kind:     entry.meta.Kind,
+			Priority: entry.meta.Priority,
+			Parallel: entry.meta.Parallel,
+			Timeout:  entry.meta.Timeout,
+			Sequence: entry.sequence,
+		})
+	}
+	return summaries
 }
 
 // IsSubApp reports whether this runtime was built below a parent app.

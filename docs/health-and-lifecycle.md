@@ -160,6 +160,74 @@ for _, subapp := range subapps.Values() {
 
 For nested apps, `rt.ScopePath()` returns app names from root to the current runtime. `rt.IsSubApp()` and `rt.ParentName()` are useful when lifecycle code needs to log whether it is running in a child app.
 
+## Lifecycle ordering and parallel hooks
+
+Lifecycle hooks are serial by default. `start` hooks run by ascending priority, and `stop` hooks run by descending priority so teardown mirrors startup.
+
+```go
+runtimeModule := dix.NewModule("runtime",
+	dix.Hooks(
+		dix.OnStart0(startCache,
+			dix.LifecycleName("cache"),
+			dix.LifecyclePriority(10),
+			dix.LifecycleParallel(),
+		),
+		dix.OnStart0(startQueue,
+			dix.LifecycleName("queue"),
+			dix.LifecyclePriority(10),
+			dix.LifecycleParallel(),
+			dix.LifecycleTimeout(10 * time.Second),
+		),
+		dix.OnStop0(stopQueue,
+			dix.LifecycleName("queue"),
+			dix.LifecyclePriority(10),
+			dix.LifecycleParallel(),
+		),
+		dix.OnStop0(stopCache,
+			dix.LifecycleName("cache"),
+			dix.LifecyclePriority(10),
+			dix.LifecycleParallel(),
+		),
+	),
+)
+
+app := dix.NewDefault(
+	dix.LifecycleConcurrency(4),
+	dix.Modules(runtimeModule),
+)
+```
+
+Only adjacent hooks with the same priority and `LifecycleParallel()` are run together. Any serial hook remains a barrier. `LifecycleTimeout(...)` passes a deadline-aware child context to the hook; hooks should respect `ctx.Done()` for cooperative cancellation. `LifecycleSummary()` includes hook names, priorities, parallel flags, timeouts, and the resolved lifecycle concurrency.
+
+When debug logging is enabled, lifecycle hooks log duration fields. Build diagnostics also include build duration, setup duration, invoke duration, provider construction duration, and explicit `ResolveAsContext` duration after framework logging has been configured.
+
+## Eager provider warmup
+
+Most providers stay lazy and are constructed on first resolve. For critical infrastructure, mark the provider eager so build performs warmup before invokes and runtime start:
+
+```go
+dbModule := dix.NewModule("db",
+	dix.Providers(
+		dix.Provider1(NewDatabase, dix.Eager()),
+	),
+)
+```
+
+Eager provider failures fail `Build()` with module, provider label, and service context. Raw eager providers must declare `ProviderMetadata.Output`.
+
+## Test overrides
+
+For tests, derive a test-only app with provider replacements and disabled modules:
+
+```go
+rt := testx.BuildWith(t, app,
+	dix.TestDisableModules("db"),
+	dix.TestValue[Store](mockStore),
+)
+```
+
+`app.Test(...)` does not mutate the original app. Replacement providers remove matching outputs or aliases from the cloned module graph before validation, so mocks still participate in normal dependency checks.
+
 ## Related
 
 - [Getting Started](./getting-started)

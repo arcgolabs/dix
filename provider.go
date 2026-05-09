@@ -32,6 +32,7 @@ func RawProviderWithMetadata(fn func(*Container), meta ProviderMetadata) Provide
 		Dependencies:  meta.Dependencies,
 		Aliases:       meta.Aliases,
 		Contributions: meta.Contributions,
+		Eager:         meta.Eager,
 		Raw:           true,
 	})
 }
