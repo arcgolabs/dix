@@ -67,6 +67,7 @@ type ProviderMetadata struct {
 	Dependencies  *collectionlist.List[ServiceRef]
 	Aliases       *collectionlist.List[ServiceRef]
 	Contributions *collectionlist.List[ContributionRef]
+	Conditions    *collectionlist.List[Condition]
 	Eager         bool
 	Raw           bool
 }
@@ -188,6 +189,7 @@ func normalizeProviderMetadata(meta ProviderMetadata) ProviderMetadata {
 	meta.Dependencies = normalizeServiceRefs(meta.Dependencies)
 	meta.Aliases = normalizeServiceRefs(meta.Aliases)
 	meta.Contributions = normalizeContributionRefs(meta.Contributions)
+	meta.Conditions = normalizeConditions(meta.Conditions)
 	return meta
 }
 
@@ -232,6 +234,15 @@ func normalizeContributionRefs(refs *collectionlist.List[ContributionRef]) *coll
 	}
 	return refs.Where(func(_ int, ref ContributionRef) bool {
 		return ref.Target.Name != "" && ref.Service.Name != ""
+	})
+}
+
+func normalizeConditions(conditions *collectionlist.List[Condition]) *collectionlist.List[Condition] {
+	if conditions == nil || conditions.Len() == 0 {
+		return collectionlist.NewList[Condition]()
+	}
+	return conditions.Where(func(_ int, condition Condition) bool {
+		return condition != nil
 	})
 }
 

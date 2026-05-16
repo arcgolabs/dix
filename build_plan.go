@@ -45,6 +45,13 @@ func newUnvalidatedBuildPlanWithParent(ctx context.Context, app *App, parent *bu
 			With("op", "flatten_modules", "app", app.Name()).
 			Wrapf(err, "module flatten failed")
 	}
+	modules, err = filterConditionalProviders(ctx, app.spec, modules, profile)
+	if err != nil {
+		logMessageEvent(ctx, app.spec.resolvedEventLogger(), EventLevelError, "provider condition failed", "app", app.Name(), "error", err)
+		return nil, oops.In("dix").
+			With("op", "filter_conditional_providers", "app", app.Name()).
+			Wrapf(err, "provider condition failed")
+	}
 
 	plan := &buildPlan{
 		spec:              app.spec,
@@ -75,12 +82,16 @@ func validateProfileResolutionApp(app *App) error {
 	return nil
 }
 
-func newProfileBootstrapPlan(app *App) (*buildPlan, error) {
-	return newProfileBootstrapPlanWithProfile(app, app.spec.profile)
+func newProfileBootstrapPlan(ctx context.Context, app *App) (*buildPlan, error) {
+	return newProfileBootstrapPlanWithProfile(ctx, app, app.spec.profile)
 }
 
-func newProfileBootstrapPlanWithProfile(app *App, profile Profile) (*buildPlan, error) {
+func newProfileBootstrapPlanWithProfile(ctx context.Context, app *App, profile Profile) (*buildPlan, error) {
 	modules, err := flattenProfileBootstrapModuleList(app.spec.modules)
+	if err != nil {
+		return nil, err
+	}
+	modules, err = filterConditionalProviders(ctx, app.spec, modules, profile)
 	if err != nil {
 		return nil, err
 	}

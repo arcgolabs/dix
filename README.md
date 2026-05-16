@@ -7,7 +7,7 @@ and a runtime model without forcing most users to deal with `do` directly.
 ## Current capabilities
 
 - **Immutable spec**: `App` and `Module` are built as declarative specs.
-- **Typed DI**: `ProviderN` registers typed constructors; `InvokeN` runs typed eager initialization.
+- **Typed DI**: `ProviderN` registers typed constructors; `Conditional[T]` models optional runtime services; `InvokeN` runs typed eager initialization.
 - **Collection contributions**: `Into[T]` and `ContributeN[T]` collect distributed providers into typed slices, maps, and `collectionx` containers.
 - **Lifecycle**: `OnStart` / `OnStop` hooks with priority, opt-in parallel execution, and `Runtime.Start/Stop/StopWithReport`.
 - **Validation**: `app.Validate()` fails on graph errors; `app.ValidateReport()` also exposes validation warnings, warning counts, service declaration counts, and missing-dependency suggestions for raw escape hatches.
@@ -52,9 +52,9 @@ go get github.com/arcgolabs/dix@latest
 - `dix.WithModules(...)`, `dix.WithProfile(...)`, `dix.WithVersion(...)`, `dix.WithLogger(...)`, `dix.WithLoggerFrom(...)`
 - `dix.WithModuleProviders(...)`, `dix.WithModuleHooks(...)`, `dix.WithModuleImports(...)`
 - `dix.WithModuleProvider(...)`, `dix.WithModuleHook(...)`, `dix.WithModuleImport(...)`
-- `dix.Value(...)`, `dix.Invoke(...)`, `dix.ProviderN(...)`, `dix.OnStart(...)`, `dix.OnStop(...)`
+- `dix.Value(...)`, `dix.Invoke(...)`, `dix.ProviderN(...)`, `dix.ConditionalProviderN(...)`, `dix.OnStart(...)`, `dix.OnStop(...)`
 - `dix.ResolveAs(...)`, `dix.ResolveKey(...)`, `dix.ResolveAsContext(ctx, ...)`, `dix.ResolveKeyContext(ctx, ...)`
-- `dix.Eager(...)`
+- `dix.Eager(...)`, `dix.When(...)`, `dix.Unless(...)`, `dix.ProfileIs(...)`, `dix.EnvEquals(...)`, `dix.EnvSet(...)`
 - `dix.LifecycleName(...)`, `dix.LifecycleAfter(...)`, `dix.LifecycleBefore(...)`, `dix.LifecyclePriority(...)`, `dix.LifecycleParallel(...)`, `dix.LifecycleTimeout(...)`, `dix.LifecycleConcurrency(...)`
 - `dix.As[T]()`, `dix.Into[T](...)`, `dix.Key(...)`, `dix.Order(...)`, `dix.ContributeN[T](...)`
 - `dix.SubApps(...)`, `dix.NewSubApp(...)`, `app.DependencyGraph()`, `app.Explain()`
@@ -78,6 +78,8 @@ go get github.com/arcgolabs/dix@latest
 - `Observers(...)` remain the extension path for sidecar consumers such as metrics, not the primary framework logger hook.
 - For zero-dependency registrations, `Value(...)` and `Invoke(...)` reduce the remaining boilerplate on the core path.
 - Use `NamedService[T](name)` to create a typed key for named services, then pass it to `ResolveKey(...)`, `ProvideKey...(...)`, or advanced named provider helpers. Public named-service registration and resolution APIs intentionally avoid bare `string` names.
+- Use `Conditional[T]` for optional runtime services. It is an alias of `mo.Option[T]`; a provider can return `mo.Some(value)` or `mo.None[T]()` after inspecting injected dependencies, and downstream consumers must explicitly accept `Conditional[T]`.
+- Use `When(...)` / `Unless(...)` for build-time provider pruning based on static inputs such as bools, zero-argument functions, profile functions, condition contexts, or env helpers. Do not use `When` for DI-dependent decisions; return `Conditional[T]` instead.
 - Use `As[T]` for a unique typed alias, and `Into[T]` / `ContributeN[T]` for multi-binding collection roles. Collection consumers can depend directly on `[]T`, `collectionx.List[T]`, `map[string]T`, `collectionx.Map[string, T]`, or `collectionx.OrderedMap[string, T]`.
 - Use `SubApps(...)` when a child app should share parent services but keep its own modules, lifecycle hooks, and child `do` scope.
 - Lifecycle hooks start by ascending priority and stop by descending priority. Use `LifecycleAfter(...)` / `LifecycleBefore(...)` for named hook dependencies; priority and declaration order remain the tie-breakers. Hooks remain serial unless `LifecycleParallel()` is set, in which case adjacent unconstrained hooks with the same priority can run through the configured lifecycle worker pool. Use `LifecycleTimeout(...)` to pass an individual hook a deadline-aware context.

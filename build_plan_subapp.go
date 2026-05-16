@@ -76,7 +76,7 @@ func resolveBuildProfileWithParent(ctx context.Context, app *App, parent *buildP
 		defaultProfile = parent.profile
 	}
 
-	plan, err := newProfileBootstrapPlanWithProfile(app, defaultProfile)
+	plan, err := newProfileBootstrapPlanWithProfile(ctx, app, defaultProfile)
 	if err != nil {
 		return "", err
 	}

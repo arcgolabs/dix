@@ -21,6 +21,7 @@ type ContributionOption func(*contributionOptions)
 type providerOptions struct {
 	aliases       *collectionlist.List[aliasSpec]
 	contributions *collectionlist.List[contributionOptionSpec]
+	conditions    *collectionlist.List[Condition]
 	eager         bool
 }
 
@@ -160,6 +161,7 @@ func newTypedProviderFunc[T any](
 			Dependencies:  deps,
 			Aliases:       aliases,
 			Contributions: contributions,
+			Conditions:    providerOpts.conditions,
 			Eager:         providerOpts.eager,
 		},
 		factories,
@@ -170,6 +172,7 @@ func applyProviderOptions(opts ...ProviderOption) providerOptions {
 	out := providerOptions{
 		aliases:       collectionlist.NewList[aliasSpec](),
 		contributions: collectionlist.NewList[contributionOptionSpec](),
+		conditions:    collectionlist.NewList[Condition](),
 	}
 	for _, opt := range opts {
 		if opt != nil {

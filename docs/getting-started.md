@@ -182,6 +182,31 @@ app := dix.New("demo", dix.Modules(configModule, testModule))
 
 In this form, `configModule` is profile-neutral and can provide the active profile. `testModule` is only loaded when the effective profile is `test`.
 
+## Optional: conditional runtime services
+
+Use `dix.Conditional[T]` when a service may be absent after inspecting already injected dependencies. It aliases `mo.Option[T]`. The provider remains a normal typed provider, so the graph can still validate that downstream consumers ask for the optional service explicitly.
+
+```go
+cacheModule := dix.NewModule("cache",
+	dix.Providers(
+		dix.Value(CacheConfig{Enabled: false}),
+		dix.ConditionalProvider1(func(cfg CacheConfig) dix.Conditional[Cache] {
+			if !cfg.Enabled {
+				return mo.None[Cache]()
+			}
+			return mo.Some[Cache](NewCache(cfg))
+		}),
+	),
+	dix.Invokes(dix.Invoke1(func(cache dix.Conditional[Cache]) {
+		if value, ok := cache.Get(); ok {
+			_ = value
+		}
+	})),
+)
+```
+
+Use `dix.When(...)` or `dix.Unless(...)` for build-time provider pruning based on static values, `func() bool`, profile predicates, condition contexts, or env helpers such as `dix.EnvEquals(...)`. If the decision needs other services, return `dix.Conditional[T]` instead.
+
 ## Optional: fully own dix internal event logging
 
 If you want full control over dix internal build/start/stop/health/debug output, use `dix.UseEventLogger...`.

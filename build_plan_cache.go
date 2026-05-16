@@ -23,7 +23,7 @@ func (a *App) cachedBuildPlan(ctx context.Context) (*buildPlan, ValidationReport
 		return nil, ValidationReport{Errors: collectionlist.NewList(err)}, err
 	}
 
-	if !a.buildPlanCacheable() {
+	if !a.buildPlanCacheable(ctx) {
 		plan, report, err := computeBuildPlan(ctx, a)
 		return plan, cloneValidationReport(report), err
 	}
@@ -70,21 +70,24 @@ func computeBuildPlan(ctx context.Context, app *App) (*buildPlan, ValidationRepo
 	return plan, report, nil
 }
 
-func (a *App) buildPlanCacheable() bool {
+func (a *App) buildPlanCacheable(ctx context.Context) bool {
 	if a == nil || a.spec == nil {
 		return false
 	}
+	if appHasProviderConditions(a) {
+		return false
+	}
 
-	return appProfileResolutionCacheable(a)
+	return appProfileResolutionCacheable(ctx, a)
 }
 
-func appProfileResolutionCacheable(app *App) bool {
+func appProfileResolutionCacheable(ctx context.Context, app *App) bool {
 	if app == nil || app.spec == nil {
 		return false
 	}
 
 	if !app.spec.profileConfigured {
-		plan, err := newProfileBootstrapPlan(app)
+		plan, err := newProfileBootstrapPlan(ctx, app)
 		if err != nil {
 			return false
 		}
@@ -95,7 +98,7 @@ func appProfileResolutionCacheable(app *App) bool {
 
 	cacheable := true
 	app.spec.subapps.Range(func(_ int, subapp *App) bool {
-		cacheable = appProfileResolutionCacheable(subapp)
+		cacheable = appProfileResolutionCacheable(ctx, subapp)
 		return cacheable
 	})
 	return cacheable
