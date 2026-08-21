@@ -132,7 +132,7 @@ func filterProvidersByServiceName(providers *collectionlist.List[ProviderFunc], 
 	if providers == nil || providers.Len() == 0 {
 		return collectionlist.NewList[ProviderFunc]()
 	}
-	return providers.Reject(func(_ int, provider ProviderFunc) bool {
+	return collectionlist.RejectList(providers, func(_ int, provider ProviderFunc) bool {
 		return providerMatchesAnyService(provider, names)
 	})
 }
@@ -142,7 +142,7 @@ func providerMatchesAnyService(provider ProviderFunc, names serviceNameSet) bool
 	if names.Contains(meta.Output.Name) {
 		return true
 	}
-	return meta.Aliases.AnyMatch(func(_ int, alias ServiceRef) bool {
+	return meta.Aliases.Stream().Any(func(alias ServiceRef) bool {
 		return names.Contains(alias.Name)
 	})
 }

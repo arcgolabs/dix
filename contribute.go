@@ -5,6 +5,20 @@ import (
 	"github.com/samber/do/v2"
 )
 
+// Contribute registers a provider only as a contribution to the collection role T.
+func Contribute[T any](fn func() T, opts ...ContributionOption) ProviderFunc {
+	return newContributionProviderFunc[T]("Contribute", func(c *Container, service string) {
+		do.ProvideNamed(c.Raw(), service, func(do.Injector) (T, error) { return fn(), nil })
+	}, nil, opts...)
+}
+
+// ContributeErr registers an error-returning provider only as a contribution to the collection role T.
+func ContributeErr[T any](fn func() (T, error), opts ...ContributionOption) ProviderFunc {
+	return newContributionProviderFunc[T]("ContributeErr", func(c *Container, service string) {
+		do.ProvideNamed(c.Raw(), service, func(do.Injector) (T, error) { return fn() })
+	}, nil, opts...)
+}
+
 // Contribute0 registers a provider only as a contribution to the collection role T.
 func Contribute0[T any](fn func() T, opts ...ContributionOption) ProviderFunc {
 	return newContributionProviderFunc[T]("Contribute0", func(c *Container, service string) {

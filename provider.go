@@ -48,6 +48,26 @@ func Value[T any](value T, opts ...ProviderOption) ProviderFunc {
 	)
 }
 
+// Provider registers a typed singleton provider without dependencies.
+func Provider[T any](fn func() T, opts ...ProviderOption) ProviderFunc {
+	return newTypedProviderFunc[T](
+		"Provider",
+		func(c *Container) { c.Provide(fn) },
+		nil,
+		opts...,
+	)
+}
+
+// ProviderErr registers a fallible typed singleton provider without dependencies.
+func ProviderErr[T any](fn func() (T, error), opts ...ProviderOption) ProviderFunc {
+	return newTypedProviderFunc[T](
+		"ProviderErr",
+		func(c *Container) { c.ProvideErr(fn) },
+		nil,
+		opts...,
+	)
+}
+
 // Provider0 registers a typed singleton provider with no dependencies.
 func Provider0[T any](fn func() T, opts ...ProviderOption) ProviderFunc {
 	return newTypedProviderFunc[T](

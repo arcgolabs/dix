@@ -35,7 +35,7 @@ func (s *validationState) suggestServiceNames(name string, limit int) *collectio
 		return matches
 	}
 
-	return candidates.Take(limit)
+	return collectionlist.NewList(candidates.Stream().Limit(limit).ToSlice()...)
 }
 
 func (s *validationState) availableServiceNames() *collectionlist.List[string] {

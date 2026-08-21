@@ -1,4 +1,4 @@
-go 1.26.2
+go 1.27.0
 
 // Workspace modules resolve local dix packages here.
 // Keep sibling go.mod files free of explicit workspace-local module requirements.

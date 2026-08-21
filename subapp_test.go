@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	collectionstream "github.com/arcgolabs/collectionx/stream"
 	"github.com/arcgolabs/dix"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -127,8 +128,12 @@ func TestSubAppHealthIsAggregatedByParent(t *testing.T) {
 	report := rt.CheckHealth(context.Background())
 	assert.False(t, report.Healthy())
 	require.NotNil(t, report.Checks)
-	hasParent := report.Checks.AnyEntryMatch(func(name string, _ error) bool { return name == "parent" })
-	hasChild := report.Checks.AnyEntryMatch(func(name string, _ error) bool { return name == "api/child" })
+	hasParent := report.Checks.Stream().Any(func(entry collectionstream.Entry[string, error]) bool {
+		return entry.Key == "parent"
+	})
+	hasChild := report.Checks.Stream().Any(func(entry collectionstream.Entry[string, error]) bool {
+		return entry.Key == "api/child"
+	})
 	assert.True(t, hasParent)
 	assert.True(t, hasChild)
 }

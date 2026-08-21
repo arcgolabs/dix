@@ -232,7 +232,7 @@ func normalizeContributionRefs(refs *collectionlist.List[ContributionRef]) *coll
 	if refs == nil || refs.Len() == 0 {
 		return collectionlist.NewList[ContributionRef]()
 	}
-	return refs.Where(func(_ int, ref ContributionRef) bool {
+	return collectionlist.FilterList(refs, func(_ int, ref ContributionRef) bool {
 		return ref.Target.Name != "" && ref.Service.Name != ""
 	})
 }
@@ -241,7 +241,7 @@ func normalizeConditions(conditions *collectionlist.List[Condition]) *collection
 	if conditions == nil || conditions.Len() == 0 {
 		return collectionlist.NewList[Condition]()
 	}
-	return conditions.Where(func(_ int, condition Condition) bool {
+	return collectionlist.FilterList(conditions, func(_ int, condition Condition) bool {
 		return condition != nil
 	})
 }
@@ -250,7 +250,7 @@ func normalizeHookNames(names *collectionlist.List[string]) *collectionlist.List
 	if names == nil || names.Len() == 0 {
 		return collectionlist.NewList[string]()
 	}
-	return names.Where(func(_ int, name string) bool {
+	return collectionlist.FilterList(names, func(_ int, name string) bool {
 		return name != ""
 	})
 }

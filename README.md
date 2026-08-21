@@ -7,7 +7,7 @@ and a runtime model without forcing most users to deal with `do` directly.
 ## Current capabilities
 
 - **Immutable spec**: `App` and `Module` are built as declarative specs.
-- **Typed DI**: `ProviderN` registers typed constructors; `Conditional[T]` models optional runtime services; `InvokeN` runs typed eager initialization.
+- **Typed DI**: `ProviderN` and `ModuleBuilder` register typed constructors; `Conditional[T]` models optional runtime services; `InvokeN` runs typed eager initialization.
 - **Collection contributions**: `Into[T]` and `ContributeN[T]` collect distributed providers into typed slices, maps, and `collectionx` containers.
 - **Lifecycle**: `OnStart` / `OnStop` hooks with priority, opt-in parallel execution, and `Runtime.Start/Stop/StopWithReport`.
 - **Validation**: `app.Validate()` fails on graph errors; `app.ValidateReport()` also exposes validation warnings, warning counts, service declaration counts, and missing-dependency suggestions for raw escape hatches.
@@ -44,6 +44,7 @@ go get github.com/arcgolabs/dix@latest
 
 - `dix.New(name, ...)` / `dix.NewDefault(...)`
 - `dix.NewModule(name, ...)`
+- `dix.NewModuleBuilder(name).Provide(...).Contribute(...).Build()`
 - `dix.Modules(...)`, `dix.UseProfile(...)`, `dix.Version(...)`, `dix.UseLogger(...)`, `dix.LoggerFrom(...)`, `dix.UseLogger0/1(...)`
 - `dix.UseEventLogger(...)`, `dix.UseEventLogger0/1(...)`
 - `dix.WithObserver(...)` / `dix.WithObservers(...)`
@@ -52,8 +53,9 @@ go get github.com/arcgolabs/dix@latest
 - `dix.WithModules(...)`, `dix.WithProfile(...)`, `dix.WithVersion(...)`, `dix.WithLogger(...)`, `dix.WithLoggerFrom(...)`
 - `dix.WithModuleProviders(...)`, `dix.WithModuleHooks(...)`, `dix.WithModuleImports(...)`
 - `dix.WithModuleProvider(...)`, `dix.WithModuleHook(...)`, `dix.WithModuleImport(...)`
-- `dix.Value(...)`, `dix.Invoke(...)`, `dix.ProviderN(...)`, `dix.ConditionalProviderN(...)`, `dix.OnStart(...)`, `dix.OnStop(...)`
+- `dix.Value(...)`, `dix.Provider(...)`, `dix.ProviderErr(...)`, `dix.Invoke(...)`, `dix.ProviderN(...)`, `dix.ConditionalProviderN(...)`, `dix.OnStart(...)`, `dix.OnStop(...)`
 - `dix.ResolveAs(...)`, `dix.ResolveKey(...)`, `dix.ResolveAsContext(ctx, ...)`, `dix.ResolveKeyContext(ctx, ...)`
+- `container.Resolve[T]()`, `container.ResolveKey(key)`, `container.MustResolve[T]()`, `container.ResolveOptional[T]()`
 - `dix.Eager(...)`, `dix.When(...)`, `dix.Unless(...)`, `dix.ProfileIs(...)`, `dix.EnvEquals(...)`, `dix.EnvSet(...)`
 - `dix.LifecycleName(...)`, `dix.LifecycleAfter(...)`, `dix.LifecycleBefore(...)`, `dix.LifecyclePriority(...)`, `dix.LifecycleParallel(...)`, `dix.LifecycleTimeout(...)`, `dix.LifecycleConcurrency(...)`
 - `dix.As[T]()`, `dix.Into[T](...)`, `dix.Key(...)`, `dix.Order(...)`, `dix.ContributeN[T](...)`
@@ -77,7 +79,8 @@ go get github.com/arcgolabs/dix@latest
 - `WithLoggerFrom...` remains supported for custom resolver flows, but a normal logger should live in the module graph.
 - `Observers(...)` remain the extension path for sidecar consumers such as metrics, not the primary framework logger hook.
 - For zero-dependency registrations, `Value(...)` and `Invoke(...)` reduce the remaining boilerplate on the core path.
-- Use `NamedService[T](name)` to create a typed key for named services, then pass it to `ResolveKey(...)`, `ProvideKey...(...)`, or advanced named provider helpers. Public named-service registration and resolution APIs intentionally avoid bare `string` names.
+- Use `NamedService[T](name)` to create a typed key for named services, then call `key.Resolve(container)`, `key.Provide(container, ...)`, or the corresponding `Container` methods. Public named-service registration and resolution APIs intentionally avoid bare `string` names.
+- Prefer `container.Resolve[T]()` and `ServiceKey[T]` methods in new code. The older top-level resolve and registration helpers remain available as low-level compatibility entry points during the v1 migration.
 - Use `Conditional[T]` for optional runtime services. It is an alias of `mo.Option[T]`; a provider can return `mo.Some(value)` or `mo.None[T]()` after inspecting injected dependencies, and downstream consumers must explicitly accept `Conditional[T]`.
 - Use `When(...)` / `Unless(...)` for build-time provider pruning based on static inputs such as bools, zero-argument functions, profile functions, condition contexts, or env helpers. Do not use `When` for DI-dependent decisions; return `Conditional[T]` instead.
 - Use `As[T]` for a unique typed alias, and `Into[T]` / `ContributeN[T]` for multi-binding collection roles. Collection consumers can depend directly on `[]T`, `collectionx.List[T]`, `map[string]T`, `collectionx.Map[string, T]`, or `collectionx.OrderedMap[string, T]`.

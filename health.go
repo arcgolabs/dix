@@ -6,6 +6,7 @@ import (
 	"fmt"
 	collectionlist "github.com/arcgolabs/collectionx/list"
 	collectionmapping "github.com/arcgolabs/collectionx/mapping"
+	collectionstream "github.com/arcgolabs/collectionx/stream"
 	"github.com/samber/oops"
 	"net/http"
 	"strings"
@@ -70,7 +71,9 @@ func (r HealthReport) Healthy() bool {
 	if r.Checks == nil || r.Checks.Len() == 0 {
 		return true
 	}
-	return r.Checks.AllEntryMatch(func(_ string, err error) bool { return err == nil })
+	return r.Checks.Stream().All(func(entry collectionstream.Entry[string, error]) bool {
+		return entry.Value == nil
+	})
 }
 
 // Error returns a combined error when one or more checks fail.
